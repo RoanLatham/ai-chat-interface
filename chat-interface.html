@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Interface</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --text-color: #ffffff;
+            --primary-color: #6c5ce7;
+            --secondary-color: #81ecec;
+            --accent-color: #fd79a8;
+            --chat-bg: #2d3436;
+            --max-width: 70vw;  /* New variable for max width */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        header, main, footer {
+            width: 100%;
+            max-width: var(--max-width);
+        }
+
+        header {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        #model-select {
+            width: 100%;
+            max-width: 300px;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            background-color: var(--chat-bg);
+            color: var(--text-color);
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        #chat-container {
+            background-color: var(--chat-bg);
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: var(--max-width);
+            width: 100%;
+            height: 60vh;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 20px;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message {
+            align-self: flex-end;
+            background-color: var(--primary-color);
+        }
+
+        .ai-message {
+            align-self: flex-start;
+            background-color: var(--secondary-color);
+            color: #2d3436;
+        }
+
+        .system-message {
+            align-self: center;
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+            font-style: italic;
+        }
+
+        #input-container {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            margin-top: 20px;
+            max-width: var(--max-width);
+            width: 100%;
+        }
+
+        #user-input {
+            padding: 15px;
+            border-radius: 25px;
+            border: none;
+            background-color: var(--chat-bg);
+            color: var(--text-color);
+            font-size: 1rem;
+        }
+
+        #send-button {
+            padding: 15px 30px;
+            border-radius: 25px;
+            border: none;
+            background-color: var(--primary-color);
+            color: var(--text-color);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #send-button:hover {
+            background-color: #5f51e8;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .message {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>AI Chat Interface</h1>
+        <select id="model-select"></select>
+    </header>
+    
+    <main id="chat-container"></main>
+    
+    <footer id="input-container">
+        <input type="text" id="user-input" placeholder="Type your message...">
+        <button id="send-button">Send</button>
+    </footer>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const modelSelect = document.getElementById('model-select');
+
+        let currentModel = '';
+
+        function addMessage(sender, message) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.classList.add(`${sender.toLowerCase()}-message`);
+            messageElement.textContent = message;
+            chatContainer.appendChild(messageElement);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function loadModels() {
+            try {
+                const response = await fetch('/models');
+                const models = await response.json();
+                modelSelect.innerHTML = models.map(model => `<option value="${model}">${model}</option>`).join('');
+                currentModel = models[0];
+            } catch (error) {
+                console.error('Error loading models:', error);
+                addMessage('system', 'Failed to load AI models.');
+            }
+        }
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (message) {
+                addMessage('user', message);
+                userInput.value = '';
+
+                try {
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ message: message, model: currentModel }),
+                    });
+                    const data = await response.json();
+                    addMessage('ai', data.response);
+                } catch (error) {
+                    console.error('Error:', error);
+                    addMessage('system', 'An error occurred while processing your request.');
+                }
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        modelSelect.addEventListener('change', (e) => {
+            currentModel = e.target.value;
+            addMessage('system', `Switched to model: ${currentModel}`);
+        });
+
+        // Load models when the page loads
+        loadModels();
+    </script>
+</body>
+</html>
