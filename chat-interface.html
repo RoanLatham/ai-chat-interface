@@ -10,10 +10,13 @@
             --bg-color: #1a1a1a;
             --text-color: #ffffff;
             --primary-color: #6c5ce7;
+            --primary-hover-color: #5f51e8;
             --secondary-color: #81ecec;
             --accent-color: #fd79a8;
             --chat-bg: #2d3436;
-            --max-width: 70vw;  /* New variable for max width */
+            --max-width: 70vw;
+            --button-color: #a0a0a0;
+            --button-hover-color: #b8b8b8;
         }
 
         * {
@@ -122,19 +125,32 @@
             font-size: 1rem;
         }
 
-        #send-button {
-            padding: 15px 30px;
+        .button {
+            padding: 10px 20px;
             border-radius: 25px;
             border: none;
-            background-color: var(--primary-color);
+            background-color: var(--button-color);
             color: var(--text-color);
             font-size: 1rem;
             cursor: pointer;
             transition: background-color 0.3s ease;
         }
 
-        #send-button:hover {
-            background-color: #5f51e8;
+        .button:hover {
+            background-color: var(--button-hover-color);
+        }
+
+        .send-button {
+            padding: 15px 30px;
+            background-color: var(--primary-color);
+        }
+
+        .send-button:hover {
+            background-color: var(--primary-hover-color);
+        }
+
+        #system-prompt-button {
+            margin-left: 10px;
         }
 
         @media (max-width: 600px) {
@@ -150,19 +166,75 @@
                 max-width: 90%;
             }
         }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: var(--chat-bg);
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid var(--primary-color);
+            border-radius: 10px;
+            width: 30%;
+            max-width: var(--max-width);
+        }
+
+        .modal-content h2 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        #system-prompt-input {
+            width: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--primary-color);
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
     <header>
         <h1>AI Chat Interface</h1>
         <select id="model-select"></select>
+        <button id="system-prompt-button" class="button">Edit System Prompt</button>
+
+        <div id="system-prompt-modal" class="modal">
+            <div class="modal-content">
+                <h2>Edit System Prompt</h2>
+                <textarea id="system-prompt-input" rows="10" cols="50"></textarea>
+                <div class="modal-buttons">
+                    <button id="save-system-prompt" class="button">Save</button>
+                    <button id="close-modal" class="button">Close</button>
+                </div>
+            </div>
+        </div>
     </header>
     
     <main id="chat-container"></main>
     
     <footer id="input-container">
         <input type="text" id="user-input" placeholder="Type your message...">
-        <button id="send-button">Send</button>
+        <button id="send-button" class="button send-button">Send</button>
     </footer>
 
     <script>
@@ -185,6 +257,10 @@
         async function loadModels() {
             try {
                 const response = await fetch('/models');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to load AI models.');
+                }
                 const models = await response.json();
                 modelSelect.innerHTML = models.map(model => `<option value="${model}">${model}</option>`).join('');
                 currentModel = models[0];
@@ -231,6 +307,81 @@
 
         // Load models when the page loads
         loadModels();
+
+        // System prompt scripts
+        // Add a button to open the system prompt modal
+        const systemPromptButton = document.getElementById('system-prompt-button');
+        const systemPromptModal = document.getElementById('system-prompt-modal');
+        const systemPromptInput = document.getElementById('system-prompt-input');
+        const saveSystemPromptButton = document.getElementById('save-system-prompt');
+        const closeModalButton = document.getElementById('close-modal');
+
+        let currentSystemPrompt = '';
+
+        async function loadSystemPrompt() {
+            try {
+                const response = await fetch('/system_prompt');
+                const data = await response.json();
+                currentSystemPrompt = data.system_prompt;
+                systemPromptInput.value = currentSystemPrompt;
+            } catch (error) {
+                console.error('Error loading system prompt:', error);
+            }
+        }
+
+        systemPromptButton.addEventListener('click', () => {
+            loadSystemPrompt();
+            systemPromptModal.style.display = 'block';
+        });
+
+        closeModalButton.addEventListener('click', () => {
+            systemPromptModal.style.display = 'none';
+        });
+
+        saveSystemPromptButton.addEventListener('click', async () => {
+            currentSystemPrompt = systemPromptInput.value;
+            systemPromptModal.style.display = 'none';
+            addMessage('system', 'System prompt updated.');
+            
+            try {
+                await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: '', model: currentModel, system_prompt: currentSystemPrompt }),
+                });
+            } catch (error) {
+                console.error('Error updating system prompt:', error);
+            }
+        });
+
+        // Modify the sendMessage function to include the system prompt
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (message) {
+                addMessage('user', message);
+                userInput.value = '';
+
+                try {
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ message: message, model: currentModel, system_prompt: currentSystemPrompt }),
+                    });
+                    const data = await response.json();
+                    addMessage('ai', data.response);
+                } catch (error) {
+                    console.error('Error:', error);
+                    addMessage('system', 'An error occurred while processing your request.');
+                }
+            }
+        }
+
+        // Load the initial system prompt when the page loads
+        loadSystemPrompt();
     </script>
 </body>
 </html>
