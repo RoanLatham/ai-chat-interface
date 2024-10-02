@@ -6,21 +6,26 @@ app = Flask(__name__)
 
 # Directory containing AI models
 MODELS_DIR = "ai_models"
-
-# Dictionary to store loaded models
-loaded_models = {}
+current_model = None
+current_model_name = None
 
 DEFAULT_SYSTEM_PROMPT = """You are a helpful, respectful, and honest AI assistant. Always provide accurate information and if you're unsure, admit it. Prioritize user safety and well-being in your responses. Be concise yet informative, and tailor your language to the user's level of understanding. Respect privacy and ethical boundaries in your interactions."""
 
 current_system_prompt = DEFAULT_SYSTEM_PROMPT
 
-def load_model(model_path):
-    if model_path not in loaded_models:
-        loaded_models[model_path] = Llama(model_path=model_path, n_ctx=2048)
-    return loaded_models[model_path]
+def load_model(model_name):
+    global current_model, current_model_name
+    if current_model_name != model_name:
+        selected_model_path = os.path.join(MODELS_DIR, model_name)
+        # Convert backslashes to forward slashes and ensure it starts with "./"
+        selected_model_path = "./" + selected_model_path.replace("\\", "/")
+        print(f"Loading model: {selected_model_path}")
+        current_model = Llama(model_path=selected_model_path, n_ctx=2048)
+        current_model_name = model_name
+    return current_model
 
 def get_available_models():
-    return [f for f in os.listdir(MODELS_DIR) if f.endswith('.bin')]
+    return [f for f in os.listdir(MODELS_DIR) if f.endswith('.gguf')]
 
 @app.route('/')
 def index():
@@ -35,18 +40,18 @@ def models():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    global current_system_prompt
+    global current_system_prompt, current_model, current_model_name
     data = request.json
     user_input = data['message']
     model_name = data['model']
     if 'system_prompt' in data:
         current_system_prompt = data['system_prompt']
     
-    model_path = os.path.join(MODELS_DIR, model_name)
-    llm = load_model(model_path)
-    # Generate response from the selected model
+    if current_model is None or current_model_name != model_name:
+        current_model = load_model(model_name)
+    
     full_prompt = f"{current_system_prompt}\n\nHuman: {user_input}\nAI:"
-    response = llm(full_prompt, max_tokens=100, stop=["Human:", "\n"], echo=True)
+    response = current_model(full_prompt, max_tokens=100, stop=["Human:", "\n"], echo=True)
     ai_response = response['choices'][0]['text'].split("AI:")[-1].strip()
     
     return jsonify({'response': ai_response})
