@@ -24,7 +24,10 @@ def index():
 
 @app.route('/models')
 def models():
-    return jsonify(get_available_models())
+    available_models = get_available_models()
+    if not available_models:
+        return jsonify({"error": "No AI models found in the ai_models folder."}), 404
+    return jsonify(available_models)
 
 @app.route('/chat', methods=['POST'])
 def chat():

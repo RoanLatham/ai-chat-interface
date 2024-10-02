@@ -190,7 +190,7 @@
                 currentModel = models[0];
             } catch (error) {
                 console.error('Error loading models:', error);
-                addMessage('system', 'Failed to load AI models.');
+                addMessage('system', error.message);
             }
         }
 
