@@ -60,5 +60,9 @@ def chat():
 def get_system_prompt():
     return jsonify({'system_prompt': current_system_prompt})
 
+@app.route('/default_system_prompt', methods=['GET'])
+def get_default_system_prompt():
+    return jsonify({'default_system_prompt': DEFAULT_SYSTEM_PROMPT})
+
 if __name__ == '__main__':
     app.run(debug=True)

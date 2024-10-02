@@ -223,11 +223,13 @@
                 <h2>Edit System Prompt</h2>
                 <textarea id="system-prompt-input" rows="10" cols="50"></textarea>
                 <div class="modal-buttons">
+                    <button id="load-default-prompt" class="button">Load Default</button>
                     <button id="save-system-prompt" class="button">Save</button>
                     <button id="close-modal" class="button">Close</button>
                 </div>
             </div>
         </div>
+        
     </header>
     
     <main id="chat-container"></main>
@@ -379,6 +381,19 @@
                 }
             }
         }
+
+        // load default system prompt
+        const loadDefaultPromptButton = document.getElementById('load-default-prompt');
+
+        loadDefaultPromptButton.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/default_system_prompt');
+                const data = await response.json();
+                systemPromptInput.value = data.default_system_prompt;
+            } catch (error) {
+                console.error('Error loading default system prompt:', error);
+            }
+        });
 
         // Load the initial system prompt when the page loads
         loadSystemPrompt();
