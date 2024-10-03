@@ -8,10 +8,19 @@
       href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap"
       rel="stylesheet"
     />
+
+    <!-- text block font -->
     <link
       href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&family=Roboto+Mono&display=swap"
       rel="stylesheet"
     />
+
+    <!-- text block syntax highlighting -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
     <style>
       :root {
         --bg-color: #1a1a1a;
@@ -111,6 +120,7 @@
         animation: fadeIn 0.3s ease-out;
       }
 
+      /* text block styles */
       .message pre {
         background-color: #2d3436;
         border-radius: 5px;
@@ -128,6 +138,19 @@
         padding: 2px 4px;
         border-radius: 3px;
         font-size: 0.9em;
+      }
+
+      .language-label {
+        font-size: 0.8em;
+        color: var(--subtle-text-color);
+        text-align: right;
+        padding: 5px 10px;
+        padding-bottom: 0;
+        background-color: rgba(45, 52, 54, 0.7);
+        border-bottom-left-radius: 5px;
+        border-bottom-right-radius: 5px;
+        margin-top: -5px;
+        font-family: "Roboto Mono", monospace;
       }
 
       .message-info {
@@ -466,13 +489,25 @@
 
         // Process text blocks
         const formattedMessage = message.replace(
-          /```([\s\S]*?)```/g,
-          (match, p1) => {
-            return `<pre><code>${p1.trim()}</code></pre>`;
+          /```(\w+)?\n([\s\S]*?)```/g,
+          (match, lang, code) => {
+            const language = lang || "";
+            return `<pre><code class="hljs ${language}">${code.trim()}</code><div class="language-label"></div></pre>`;
           }
         );
 
         messageElement.innerHTML = formattedMessage;
+
+        // Apply syntax highlighting and add language labels
+        messageElement.querySelectorAll("pre code").forEach((block) => {
+          hljs.highlightElement(block);
+          const detectedLanguage = block.result.language;
+          const languageLabel =
+            block.parentNode.querySelector(".language-label");
+          if (detectedLanguage && languageLabel) {
+            languageLabel.textContent = `Language: ${detectedLanguage}`;
+          }
+        });
 
         const infoElement = document.createElement("div");
         infoElement.classList.add("message-info");
