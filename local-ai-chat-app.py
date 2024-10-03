@@ -189,10 +189,9 @@ def chat():
         naming_prompt = f"{NAMING_PROMPT}\n\nUser's message: {user_input}\n\nTitle:"
         naming_response = current_model(naming_prompt, max_tokens=10, stop=["\n"], temperature=0.7)
         conversation_name = naming_response['choices'][0]['text'].strip()
-        
         current_conversation = create_conversation(conversation_name)
     
-    current_conversation.add_message(user_input, "Human")
+    new_node = current_conversation.add_message(user_input, "Human")
     
     conversation_history = "\n".join([f"{node.sender}: {node.content}" for node in current_conversation.get_current_branch()])
     #TODO trim start of conversation history to a limit of X tokens
@@ -200,19 +199,80 @@ def chat():
     
     response = current_model(full_prompt, max_tokens=10000, stop=["Human:"], temperature=0.7, top_p=0.9, top_k=40, repeat_penalty=1.1, presence_penalty=0.1, frequency_penalty=0.01, mirostat_mode=2, mirostat_tau=5.0, mirostat_eta=0.1, echo=True)
     ai_response = response['choices'][0]['text'].split("AI:")[-1].strip()
-    timestamp = datetime.now().isoformat()
     
-    current_conversation.add_message(ai_response, "AI", current_model_name)
+    ai_node = current_conversation.add_message(ai_response, "AI", current_model_name)
     save_conversation(current_conversation, CONVERSATIONS_DIR)
     
     return jsonify({
-        'response': ai_response, 
+        'response': ai_response,
         'conversation_id': current_conversation.id,
         'conversation_name': current_conversation.name,
         'model_name': current_model_name,
-        'timestamp': timestamp
+        'human_node_id': new_node.id,
+        'ai_node_id': ai_node.id,
+        'timestamp': ai_node.timestamp.isoformat()
     })
 
+@app.route('/edit_message', methods=['POST'])
+def edit_message():
+    data = request.json
+    node_id = data['node_id']
+    new_content = data['new_content']
+    
+    if current_conversation:
+        new_node = current_conversation.edit_message(node_id, new_content)
+        if new_node:
+            save_conversation(current_conversation, CONVERSATIONS_DIR)
+            return jsonify({
+                'success': True,
+                'new_node_id': new_node.id,
+                'timestamp': new_node.timestamp.isoformat()
+            })
+    
+    return jsonify({'success': False, 'error': 'Failed to edit message'}), 400
+
+@app.route('/get_siblings', methods=['POST'])
+def get_siblings():
+    data = request.json
+    node_id = data['node_id']
+    
+    if current_conversation:
+        siblings = current_conversation.get_siblings(node_id)
+        return jsonify({
+            'siblings': [
+                {
+                    'id': node.id,
+                    'content': node.content,
+                    'sender': node.sender,
+                    'timestamp': node.timestamp.isoformat(),
+                    'model_name': node.model_name
+                } for node in siblings
+            ]
+        })
+    
+    return jsonify({'siblings': []}), 400
+
+@app.route('/switch_branch', methods=['POST'])
+def switch_branch():
+    data = request.json
+    node_id = data['node_id']
+    
+    if current_conversation:
+        current_conversation.navigate_to(node_id)
+        branch = current_conversation.get_current_branch()
+        return jsonify({
+            'branch': [
+                {
+                    'id': node.id,
+                    'content': node.content,
+                    'sender': node.sender,
+                    'timestamp': node.timestamp.isoformat(),
+                    'model_name': node.model_name
+                } for node in branch
+            ]
+        })
+    
+    return jsonify({'branch': []}), 400
 
 @app.route('/system_prompt', methods=['GET'])
 def get_system_prompt():
