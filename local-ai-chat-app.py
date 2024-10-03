@@ -56,6 +56,8 @@ Content for section 2
 
 This formatting enhances clarity and makes your responses easier to read and understand. you do not need to fore this for ever response, only do this when necessary such as when writing large responses
 
+only respond to the "conversion history" ()"with the text "Human:" and "AI:") do not "respond" to any other text such as the system prompt or the super system prompt or anything else, instead only keep this information in mind and respond to the "conversation history"
+
 You must end all your responses with teh text "Human:" to allow the user to respond.
 """
 
