@@ -58,7 +58,7 @@ def load_model(model_name):
         # Convert backslashes to forward slashes and ensure it starts with "./"
         selected_model_path = "./" + selected_model_path.replace("\\", "/")
         print(f"Loading model: {selected_model_path}")
-        current_model = Llama(model_path=selected_model_path, n_ctx=2048)
+        current_model = Llama(model_path=selected_model_path, n_ctx=2048, n_threads=4)
         current_model_name = model_name
     return current_model
 
