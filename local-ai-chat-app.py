@@ -20,6 +20,9 @@ current_model_name = None
 
 current_conversation = None
 
+NAMING_PROMPT = """Based on the user's first message, generate a short, concise title for this conversation. The title should be no more than 5 words long and should capture the essence of the topic or query. Respond with only the title, nothing else."""
+
+
 SUPER_SYSTEM_PROMPT = """
 SUPER SYSTEM PROMPT:
 
@@ -182,7 +185,12 @@ def chat():
         current_model = load_model(model_name)
     
     if current_conversation is None:
-        current_conversation = create_conversation()
+        # Generate a name for the new conversation
+        naming_prompt = f"{NAMING_PROMPT}\n\nUser's message: {user_input}\n\nTitle:"
+        naming_response = current_model(naming_prompt, max_tokens=10, stop=["\n"], temperature=0.7)
+        conversation_name = naming_response['choices'][0]['text'].strip()
+        
+        current_conversation = create_conversation(conversation_name)
     
     current_conversation.add_message(user_input, "Human")
     
@@ -204,6 +212,7 @@ def chat():
         'model_name': current_model_name,
         'timestamp': timestamp
     })
+
 
 @app.route('/system_prompt', methods=['GET'])
 def get_system_prompt():
