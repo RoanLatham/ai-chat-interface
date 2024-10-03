@@ -73,16 +73,15 @@
       }
 
       #chat-container {
+        flex-grow: 1;
+        overflow-y: auto;
         background-color: var(--chat-bg);
         border-radius: 10px;
         padding: 20px;
-        overflow-y: auto;
+        margin-bottom: 20px;
         display: flex;
         flex-direction: column;
         gap: 15px;
-        max-width: var(--max-width);
-        width: 100%;
-        height: 60vh;
       }
 
       .message {
@@ -125,9 +124,6 @@
         display: grid;
         grid-template-columns: 1fr auto;
         gap: 10px;
-        margin-top: 20px;
-        max-width: var(--max-width);
-        width: 100%;
       }
 
       #user-input {
@@ -154,12 +150,18 @@
         background-color: var(--button-hover-color);
       }
 
-      .send-button {
+      #send-button {
         padding: 15px 30px;
+        border-radius: 25px;
+        border: none;
         background-color: var(--primary-color);
+        color: var(--text-color);
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
       }
 
-      .send-button:hover {
+      #send-button:hover {
         background-color: var(--primary-hover-color);
       }
 
@@ -233,12 +235,19 @@
       }
 
       #conversation-list {
-        width: 25%;
+        width: 22%;
         background-color: var(--chat-bg);
         padding: 15px;
         margin-right: 20px;
         border-radius: 10px;
         overflow-y: auto;
+        height: 100%;
+      }
+
+      #chat-area {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
         height: 100%;
       }
 
@@ -358,13 +367,18 @@
           New chat
         </button>
       </div>
-      <main id="chat-container"></main>
+      <div id="chat-area">
+        <main id="chat-container"></main>
+        <footer id="input-container">
+          <input
+            type="text"
+            id="user-input"
+            placeholder="Type your message..."
+          />
+          <button id="send-button" class="button send-button">Send</button>
+        </footer>
+      </div>
     </div>
-
-    <footer id="input-container">
-      <input type="text" id="user-input" placeholder="Type your message..." />
-      <button id="send-button" class="button send-button">Send</button>
-    </footer>
 
     <script>
       const chatContainer = document.getElementById("chat-container");
