@@ -11,6 +11,7 @@ class Node:
         self.timestamp = timestamp
         self.children: List[Node] = []  # List of reply messages
         self.parent: Optional[Node] = None  # Parent message, if any
+        self.html_content: str = ""  # Chat container gui at time of the conversation being saved
 
 # Tree class manages the branching structure of the conversation
 class Tree:
@@ -80,10 +81,17 @@ class Conversation:
     def load(filename: str) -> 'Conversation':
         with open(filename, 'rb') as f:
             return pickle.load(f)
+    
+    def set_html_content(self, html: str):
+        self.html_content = html
+        print(f"HTML content set to: {self.html_content}")
+
+    def get_html_content(self) -> str:
+        return self.html_content
 
 # Utility function to list all saved conversations in a directory
 def list_conversations(directory: str) -> List[str]:
-    return [f for f in os.listdir(directory) if f.endswith('.pickle')]
+    return [f[:-7] for f in os.listdir(directory) if f.endswith('.pickle')]
 
 # Create a new conversation with a given title
 def create_conversation(title: str) -> Conversation:
