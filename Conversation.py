@@ -2,6 +2,8 @@ import pickle
 from datetime import datetime
 from typing import List, Optional, Dict
 import os
+import uuid
+import logging
 
 # Node class represents a single message in the conversation
 class Node:
@@ -45,8 +47,9 @@ class Tree:
 
 # Conversation class encapsulates the entire conversation structure
 class Conversation:
-    def __init__(self, title: str):
-        self.title = title
+    def __init__(self, name: str):
+        self.id = str(uuid.uuid4())
+        self.name = name
         self.tree = Tree()
         self.metadata: Dict[str, any] = {}  # For storing additional information
         self.latest_message_timestamp: Optional[datetime] = None
@@ -94,19 +97,30 @@ class Conversation:
         return self.html_content
 
 # Utility function to list all saved conversations in a directory
-def list_conversations(directory: str) -> List[str]:
-    return [f[:-7] for f in os.listdir(directory) if f.endswith('.pickle')]
+def list_conversations(directory: str) -> Dict[str, str]:
+    conversations = {}
+    for f in os.listdir(directory):
+        if f.endswith('.pickle'):
+            conv = load_conversation(f[:-7], directory)
+            try:
+                name = conv.name
+            except AttributeError:
+                name = conv.id
+                logging.warning(f"Conversation {conv.id} does not have a name attribute, using ID as name.")
+            conversations[conv.id] = name
+    # returns a ids as keys and names as values
+    return conversations
 
-# Create a new conversation with a given title
-def create_conversation(title: str) -> Conversation:
-    return Conversation(title)
+# Create a new conversation with a given name
+def create_conversation(name: str = "Naming...") -> Conversation:
+    return Conversation(name)
 
 # Save a conversation to a file in the specified directory
 def save_conversation(conversation: Conversation, directory: str):
-    filename = os.path.join(directory, f"{conversation.title}.pickle")
+    filename = os.path.join(directory, f"{conversation.id}.pickle")
     conversation.save(filename)
 
 # Load a conversation from a file in the specified directory
-def load_conversation(title: str, directory: str) -> Conversation:
-    filename = os.path.join(directory, f"{title}.pickle")
+def load_conversation(id: str, directory: str) -> Conversation:
+    filename = os.path.join(directory, f"{id}.pickle")
     return Conversation.load(filename)
