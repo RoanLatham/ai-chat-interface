@@ -179,8 +179,6 @@ def chat():
     
     current_conversation.add_message(user_input, "Human")
     
-    current_conversation.add_message(user_input, "Human")
-    
     conversation_history = "\n".join([f"{node.sender}: {node.content}" for node in current_conversation.get_current_branch()])
     full_prompt = f"{SUPER_SYSTEM_PROMPT}\n\n{current_system_prompt}\n\n{conversation_history}\nHuman: {user_input}\nAI:"
     
