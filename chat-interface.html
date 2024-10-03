@@ -515,9 +515,25 @@
         }
       });
 
-      userInput.addEventListener("keypress", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
+      sendButton.addEventListener("click", sendMessage);
+
+      sendButton.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      userInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          if (e.shiftKey) {
+            // Allow new line when Shift+Enter is pressed
+            return;
+          } else {
+            // Send message when only Enter is pressed
+            e.preventDefault();
+            sendMessage();
+          }
         }
       });
 
@@ -629,13 +645,6 @@
           }
         }
       }
-
-      sendButton.addEventListener("click", sendMessage);
-      userInput.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") {
-          sendMessage();
-        }
-      });
 
       modelSelect.addEventListener("change", (e) => {
         currentModel = e.target.value;
