@@ -96,6 +96,7 @@
         display: flex;
         flex-direction: column;
         gap: 15px;
+        min-height: 40%;
       }
 
       .message-container {
@@ -208,18 +209,39 @@
       }
 
       #input-container {
-        display: grid;
-        grid-template-columns: 1fr auto;
+        display: flex;
         gap: 10px;
+        align-items: flex-end;
+        max-height: 40%;
+        box-sizing: content-box;
+      }
+
+      #message-box {
+        display: flex;
+        flex-grow: 1;
+        background-color: var(--chat-bg);
+        border-radius: 25px;
+        max-height: 100%;
+        box-sizing: content-box;
       }
 
       #user-input {
-        padding: 15px;
-        border-radius: 25px;
+        margin: 15px;
+        background-color: transparent;
         border: none;
-        background-color: var(--chat-bg);
         color: var(--text-color);
         font-size: 1rem;
+        resize: none;
+        outline: none;
+        box-sizing: border-box;
+        overflow-y: auto;
+        border-radius: 10px;
+        flex-grow: 1;
+      }
+
+      textarea {
+        resize: none;
+        font-family: inherit;
       }
 
       .button {
@@ -458,11 +480,13 @@
       <div id="chat-area">
         <main id="chat-container"></main>
         <footer id="input-container">
-          <input
-            type="text"
-            id="user-input"
-            placeholder="Type your message..."
-          />
+          <div id="message-box">
+            <textarea
+              id="user-input"
+              placeholder="Type your message..."
+              rows="1"
+            ></textarea>
+          </div>
           <button id="send-button" class="button send-button">Send</button>
         </footer>
       </div>
@@ -471,10 +495,31 @@
     <script>
       const chatContainer = document.getElementById("chat-container");
       const userInput = document.getElementById("user-input");
+      const inputContainer = document.getElementById("input-container");
+      const messageBox = document.getElementById("message-box");
       const sendButton = document.getElementById("send-button");
       const modelSelect = document.getElementById("model-select");
 
       let currentModel = "";
+
+      userInput.addEventListener("input", function () {
+        this.style.height = "auto";
+        this.style.height = this.scrollHeight + "px";
+
+        const maxHeight = messageBox.offsetHeight - 30;
+        if (this.scrollHeight > maxHeight) {
+          this.style.height = maxHeight + "px";
+          this.style.overflowY = "auto";
+        } else {
+          this.style.overflowY = "hidden";
+        }
+      });
+
+      userInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+        }
+      });
 
       function addMessage(sender, message, modelName, timestamp = null) {
         const messageContainer = document.createElement("div");
@@ -512,7 +557,9 @@
         const infoElement = document.createElement("div");
         infoElement.classList.add("message-info");
         infoElement.classList.add(`${sender.toLowerCase()}-info`);
-        infoElement.textContent = `${new Date(timestamp).toLocaleString()}`;
+        infoElement.textContent = `${new Date(
+          timestamp || Date.now() //TODO receive the timestamp form the server and instead of using null
+        ).toLocaleString()}`;
         if (modelName) {
           infoElement.textContent += ` • Model: ${modelName}`;
         }
@@ -548,6 +595,10 @@
         if (message) {
           addMessage("user", message);
           userInput.value = "";
+
+          // Reset the height of the textarea
+          userInput.style.height = "auto";
+          userInput.style.overflowY = "hidden";
 
           try {
             const response = await fetch("/chat", {
