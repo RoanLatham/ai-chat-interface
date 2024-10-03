@@ -5,13 +5,13 @@ import os
 
 # Node class represents a single message in the conversation
 class Node:
-    def __init__(self, content: str, sender: str, timestamp: datetime):
+    def __init__(self, content: str, sender: str, timestamp: datetime, model_name: Optional[str] = None):
         self.content = content
         self.sender = sender
         self.timestamp = timestamp
-        self.children: List[Node] = []  # List of reply messages
-        self.parent: Optional[Node] = None  # Parent message, if any
-        self.html_content: str = ""  # Chat container gui at time of the conversation being saved
+        self.children: List[Node] = []
+        self.parent: Optional[Node] = None
+        self.model_name: Optional[str] = model_name
 
 # Tree class manages the branching structure of the conversation
 class Tree:
@@ -20,8 +20,8 @@ class Tree:
         self.current_node: Optional[Node] = None  # Currently active message
 
     # Add a new message to the conversation
-    def add_node(self, content: str, sender: str) -> Node:
-        new_node = Node(content, sender, datetime.now())
+    def add_node(self, content: str, sender: str, model_name: Optional[str] = None) -> Node:
+        new_node = Node(content, sender, datetime.now(), model_name)
         if not self.root:
             self.root = new_node
         else:
