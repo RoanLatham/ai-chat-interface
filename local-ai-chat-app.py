@@ -46,6 +46,16 @@ When appropriate, use text blocks or code blocks enclosed in triple backticks li
 
 You must NEVER write three backticks ``` on its own, with no closing backticks ```
 
+When appropriate, use new lines to separate sections of your responses and improve readability. Structure your responses with proper spacing, like this:
+
+Section 1
+Content for section 1
+
+Section 2
+Content for section 2
+
+This formatting enhances clarity and makes your responses easier to read and understand. you do not need to fore this for ever response, only do this when necessary such as when writing large responses
+
 You must end all your responses with teh text "Human:" to allow the user to respond.
 """
 
