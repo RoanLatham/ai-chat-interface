@@ -8,6 +8,7 @@ import logging
 # Node class represents a single message in the conversation
 class Node:
     def __init__(self, content: str, sender: str, timestamp: datetime, model_name: Optional[str] = None):
+        self.id = str(uuid.uuid4())
         self.content = content
         self.sender = sender
         self.timestamp = timestamp
@@ -31,19 +32,44 @@ class Tree:
             self.current_node.children.append(new_node)
         self.current_node = new_node
         return new_node
-
+    
     # Edit an existing message, creating a new branch
-    def edit_node(self, node: Node, new_content: str) -> Node:
-        new_node = Node(new_content, node.sender, datetime.now())
-        new_node.parent = node.parent
-        if node.parent:
-            node.parent.children.append(new_node)
-        self.current_node = new_node
-        return new_node
-
+    def edit_node(self, node_id: str, new_content: str) -> Optional[Node]:
+        node = self.find_node(node_id)
+        if node:
+            new_node = Node(new_content, node.sender, datetime.now(), node.model_name)
+            new_node.parent = node.parent
+            if node.parent:
+                node.parent.children.append(new_node)
+            self.current_node = new_node
+            return new_node
+        return None
+    
     # Move to a specific node in the conversation
-    def navigate_to(self, node: Node):
-        self.current_node = node
+    def find_node(self, node_id: str) -> Optional[Node]:
+        def dfs(node):
+            if node.id == node_id:
+                return node
+            for child in node.children:
+                result = dfs(child)
+                if result:
+                    return result
+            return None
+        return dfs(self.root) if self.root else None
+
+    def get_siblings(self, node_id: str) -> List[Node]:
+        node = self.find_node(node_id)
+        if node and node.parent:
+            return sorted(node.parent.children, key=lambda x: x.timestamp)
+        return []
+
+    def get_current_branch(self) -> List[Node]:
+        branch = []
+        current = self.current_node
+        while current:
+            branch.append(current)
+            current = current.parent
+        return list(reversed(branch))
 
 # Conversation class encapsulates the entire conversation structure
 class Conversation:
@@ -61,23 +87,26 @@ class Conversation:
         return new_node
 
     # Edit an existing message in the conversation
-    def edit_message(self, node: Node, new_content: str) -> Node:
-        new_node = self.tree.edit_node(node, new_content)
-        self.latest_message_timestamp = new_node.timestamp
-        return new_node
-
-    # Navigate to a specific message in the conversation
-    def navigate_to(self, node: Node):
-        self.tree.navigate_to(node)
+    def edit_message(self, node_id: str, new_content: str) -> Optional[Node]:
+        return self.tree.edit_node(node_id, new_content)
 
     # Get the current branch of the conversation (path from root to current node)
     def get_current_branch(self) -> List[Node]:
-        branch = []
-        current = self.tree.current_node
-        while current:
-            branch.append(current)
-            current = current.parent
-        return list(reversed(branch))
+        return self.tree.get_current_branch()
+
+    # Get the siblings of a specific message in the conversation from its ID
+    def get_siblings(self, node_id: str) -> List[Node]:
+        return self.tree.get_siblings(node_id)
+
+    # Find a specific message in the conversation from its ID
+    def find_node(self, node_id: str) -> Optional[Node]:
+        return self.tree.find_node(node_id)
+
+    # Navigate to a specific message in the conversation
+    def navigate_to(self, node_id: str):
+        node = self.tree.find_node(node_id)
+        if node:
+            self.tree.current_node = node
 
     # Save the conversation to a file
     def save(self, filename: str):
