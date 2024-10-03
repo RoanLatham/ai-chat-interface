@@ -89,7 +89,6 @@ class Conversation:
     
     def set_html_content(self, html: str):
         self.html_content = html
-        print(f"HTML content set to: {self.html_content}")
 
     def get_html_content(self) -> str:
         return self.html_content
