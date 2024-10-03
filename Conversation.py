@@ -49,14 +49,19 @@ class Conversation:
         self.title = title
         self.tree = Tree()
         self.metadata: Dict[str, any] = {}  # For storing additional information
+        self.latest_message_timestamp: Optional[datetime] = None
 
     # Add a new message to the conversation
-    def add_message(self, content: str, sender: str) -> Node:
-        return self.tree.add_node(content, sender)
+    def add_message(self, content: str, sender: str, model_name: Optional[str] = None) -> Node:
+        new_node = self.tree.add_node(content, sender, model_name)
+        self.latest_message_timestamp = new_node.timestamp
+        return new_node
 
     # Edit an existing message in the conversation
     def edit_message(self, node: Node, new_content: str) -> Node:
-        return self.tree.edit_node(node, new_content)
+        new_node = self.tree.edit_node(node, new_content)
+        self.latest_message_timestamp = new_node.timestamp
+        return new_node
 
     # Navigate to a specific message in the conversation
     def navigate_to(self, node: Node):
