@@ -194,7 +194,7 @@ def chat():
     #TODO trim start of conversation history to a limit of X tokens
     full_prompt = f"{SUPER_SYSTEM_PROMPT}\n\nsystem prompt: {current_system_prompt}\n\n{conversation_history}\nHuman: {user_input}\nAI:"
     
-    response = current_model(full_prompt, max_tokens=10000, stop=["Human:"], temperature=0.7, top_p=0.9, top_k=40, repeat_penalty=1.1, presence_penalty=0.1, frequency_penalty=0.1, mirostat_mode=2, mirostat_tau=5.0, mirostat_eta=0.1, echo=True)
+    response = current_model(full_prompt, max_tokens=10000, stop=["Human:"], temperature=0.7, top_p=0.9, top_k=40, repeat_penalty=1.1, presence_penalty=0.1, frequency_penalty=0.01, mirostat_mode=2, mirostat_tau=5.0, mirostat_eta=0.1, echo=True)
     ai_response = response['choices'][0]['text'].split("AI:")[-1].strip()
     timestamp = datetime.now().isoformat()
     
