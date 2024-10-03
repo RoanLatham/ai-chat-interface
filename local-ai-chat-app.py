@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 import logging
 from flask import Flask, request, jsonify, send_from_directory
 from llama_cpp import Llama
@@ -184,11 +185,17 @@ def chat():
     
     response = current_model(full_prompt, max_tokens=100, stop=["Human:", "\n"], echo=True)
     ai_response = response['choices'][0]['text'].split("AI:")[-1].strip()
+    timestamp = datetime.now().isoformat()
     
-    current_conversation.add_message(ai_response, "AI")
+    current_conversation.add_message(ai_response, "AI", current_model_name)
     save_conversation(current_conversation, CONVERSATIONS_DIR)
     
-    return jsonify({'response': ai_response, 'conversation_id': current_conversation.title})
+    return jsonify({
+        'response': ai_response, 
+        'conversation_id': current_conversation.title,
+        'model_name': current_model_name,
+        'timestamp': timestamp
+    })
 
 @app.route('/system_prompt', methods=['GET'])
 def get_system_prompt():

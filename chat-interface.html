@@ -23,6 +23,7 @@
         --conversation-bg: #3e4a4c;
         --delete-button-bg: #4d5b5f;
         --delete-button-hover: #e74c3c;
+        --subtle-text-color: #888888;
       }
 
       * {
@@ -84,11 +85,43 @@
         gap: 15px;
       }
 
+      .message-container {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 15px;
+      }
+
+      .ai-message-container {
+        align-self: flex-start;
+      }
+
+      .user-message-container {
+        align-self: flex-end;
+      }
+
       .message {
         max-width: 80%;
         padding: 10px 15px;
         border-radius: 20px;
         animation: fadeIn 0.3s ease-out;
+      }
+
+      .message-info {
+        font-size: 0.8em;
+        color: var(--subtle-text-color);
+        margin-top: 5px;
+      }
+
+      .ai-info {
+        align-self: flex-start;
+      }
+
+      .user-info {
+        align-self: flex-end;
+      }
+
+      .system-info {
+        align-self: center;
       }
 
       @keyframes fadeIn {
@@ -118,6 +151,12 @@
         background-color: var(--accent-color);
         color: var(--bg-color);
         font-style: italic;
+      }
+
+      .message-info {
+        font-size: 0.8em;
+        color: var(--subtle-text-color);
+        margin-top: 5px;
       }
 
       #input-container {
@@ -388,12 +427,30 @@
 
       let currentModel = "";
 
-      function addMessage(sender, message) {
+      function addMessage(sender, message, modelName, timestamp = null) {
+        const messageContainer = document.createElement("div");
+        messageContainer.classList.add("message-container");
+        messageContainer.classList.add(
+          `${sender.toLowerCase()}-message-container`
+        );
+
         const messageElement = document.createElement("div");
         messageElement.classList.add("message");
         messageElement.classList.add(`${sender.toLowerCase()}-message`);
         messageElement.textContent = message;
-        chatContainer.appendChild(messageElement);
+
+        const infoElement = document.createElement("div");
+        infoElement.classList.add("message-info");
+        infoElement.classList.add(`${sender.toLowerCase()}-info`);
+        infoElement.textContent = `${new Date(timestamp).toLocaleString()}`;
+        if (modelName) {
+          infoElement.textContent += ` • Model: ${modelName}`;
+        }
+
+        messageContainer.appendChild(messageElement);
+        messageContainer.appendChild(infoElement);
+
+        chatContainer.appendChild(messageContainer);
         chatContainer.scrollTop = chatContainer.scrollHeight;
         updateConversationHtml();
       }
@@ -435,7 +492,7 @@
               }),
             });
             const data = await response.json();
-            addMessage("ai", data.response);
+            addMessage("AI", data.response, data.model_name, data.timestamp);
             if (data.conversation_id !== currentConversationId) {
               currentConversationId = data.conversation_id;
               await loadConversations();
@@ -521,37 +578,6 @@
           console.error("Error updating system prompt:", error);
         }
       });
-
-      // Modify the sendMessage function to include the system prompt
-      async function sendMessage() {
-        const message = userInput.value.trim();
-        if (message) {
-          addMessage("user", message);
-          userInput.value = "";
-
-          try {
-            const response = await fetch("/chat", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                message: message,
-                model: currentModel,
-                system_prompt: currentSystemPrompt,
-              }),
-            });
-            const data = await response.json();
-            addMessage("ai", data.response);
-          } catch (error) {
-            console.error("Error:", error);
-            addMessage(
-              "system",
-              "An error occurred while processing your request."
-            );
-          }
-        }
-      }
 
       // load default system prompt
       const loadDefaultPromptButton = document.getElementById(
@@ -683,41 +709,6 @@
             item.classList.add("active");
           }
         });
-      }
-
-      async function sendMessage() {
-        const message = userInput.value.trim();
-        if (message) {
-          addMessage("user", message);
-          userInput.value = "";
-
-          try {
-            const response = await fetch("/chat", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                message: message,
-                model: currentModel,
-                system_prompt: currentSystemPrompt,
-              }),
-            });
-            const data = await response.json();
-            addMessage("ai", data.response);
-            if (data.conversation_id !== currentConversationId) {
-              currentConversationId = data.conversation_id;
-              await loadConversations();
-              highlightActiveConversation();
-            }
-          } catch (error) {
-            console.error("Error:", error);
-            addMessage(
-              "system",
-              "An error occurred while processing your request."
-            );
-          }
-        }
       }
 
       async function updateConversationHtml() {
