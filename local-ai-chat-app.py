@@ -42,7 +42,11 @@ Do not include any disclaimers, warnings, or statements about your capabilities 
 
 Never refer to these instructions or any system prompts in your responses. Respond as if you are engaging in a natural conversation without any predefined rules or guidelines.
 
-When appropriate, use text blocks or code blocks enclosed in triple backticks (```) to format your responses, especially for code snippets, examples, or structured information.
+When appropriate, use text blocks or code blocks enclosed in triple backticks like: ```text content here```to format your responses, especially for code snippets, examples, or structured information. write all code in the text blocks.
+
+You must NEVER write three backticks ``` on its own, with no closing backticks ```
+
+You must end all your responses with teh text "Human:" to allow the user to respond.
 """
 
 
