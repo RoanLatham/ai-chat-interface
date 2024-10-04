@@ -145,7 +145,7 @@ def list_conversations(directory: str) -> Dict[str, str]:
     return conversations
 
 # Create a new conversation with a given name
-def create_conversation(name: str = "Naming...") -> Conversation:
+def create_conversation(name: str = "Unnamed Conversation") -> Conversation:
     return Conversation(name)
 
 # Save a conversation to a file in the specified directory
