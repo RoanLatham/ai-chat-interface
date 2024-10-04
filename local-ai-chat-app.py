@@ -189,18 +189,43 @@ def get_current_conversation():
     else:
         return jsonify({'conversation_id': None, 'conversation_name': None, 'branch': []})
 
-# @app.route('/update_conversation_html', methods=['POST'])
-# def update_conversation_html():
-#     global current_conversation
-#     data = request.json
-#     html_content = data['html_content']
+@app.route('/switch_branch', methods=['POST'])
+def switch_branch():
+    data = request.json
+    node_id = data['node_id']
+    direction = data['direction']
     
-#     if current_conversation:
-#         current_conversation.set_html_content(html_content)
-#         save_conversation(current_conversation, CONVERSATIONS_DIR)
-#         return jsonify({'success': True})
-#     else:
-#         return jsonify({'error': 'No active conversation'}), 400
+    if current_conversation:
+        siblings = current_conversation.get_siblings(node_id)
+        current_index = next((i for i, sibling in enumerate(siblings) if sibling.id == node_id), -1)
+        
+        if direction == 'left' and current_index > 0:
+            new_node = siblings[current_index - 1]
+        elif direction == 'right' and current_index < len(siblings) - 1:
+            new_node = siblings[current_index + 1]
+        else:
+            return jsonify({'success': False, 'error': 'Cannot switch branch in this direction'}), 400
+        
+        leaf_node = current_conversation.tree.get_leaf_node(new_node)
+        current_conversation.tree.current_node = leaf_node
+        save_conversation(current_conversation, CONVERSATIONS_DIR)
+        
+        return jsonify({
+            'success': True,
+            'conversation_id': current_conversation.id,
+            'branch': [
+                {
+                    'id': node.id,
+                    'content': node.content,
+                    'sender': node.sender,
+                    'timestamp': node.timestamp.isoformat(),
+                    'model_name': node.model_name
+                } for node in current_conversation.get_current_branch()
+            ]
+        })
+    
+    return jsonify({'success': False, 'error': 'No active conversation'}), 400
+
 
 def generate_ai_response(conversation: Conversation):
     conversation_history = "\n".join([f"{node.sender}: {node.content}" for node in conversation.get_current_branch()])
@@ -264,7 +289,7 @@ def edit_message():
             
             if sender.lower() == 'human':
                 # Generate new AI response for edited human message
-                ai_response, ai_node = generate_ai_response(current_conversation, new_content)
+                ai_response, ai_node = generate_ai_response(current_conversation)
             else:
                 # No need to generate response for AI message edit
                 ai_response, ai_node = None, None
@@ -303,6 +328,7 @@ def get_siblings():
     
     if current_conversation:
         siblings = current_conversation.get_siblings(node_id)
+        logging.info(f"Siblings for node_id {node_id}: {siblings}")
         return jsonify({
             'siblings': [
                 {
@@ -316,28 +342,6 @@ def get_siblings():
         })
     
     return jsonify({'siblings': []}), 400
-
-# @app.route('/switch_branch', methods=['POST'])
-# def switch_branch():
-#     data = request.json
-#     node_id = data['node_id']
-    
-#     if current_conversation:
-#         current_conversation.navigate_to(node_id)
-#         branch = current_conversation.get_current_branch()
-#         return jsonify({
-#             'branch': [
-#                 {
-#                     'id': node.id,
-#                     'content': node.content,
-#                     'sender': node.sender,
-#                     'timestamp': node.timestamp.isoformat(),
-#                     'model_name': node.model_name
-#                 } for node in branch
-#             ]
-#         })
-    
-#     return jsonify({'branch': []}), 400
 
 @app.route('/system_prompt', methods=['GET'])
 def get_system_prompt():

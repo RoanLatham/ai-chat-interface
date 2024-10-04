@@ -20,7 +20,6 @@ class Node:
 class Tree:
     def __init__(self):
         self.root = self.current_node = Node("", "Root", datetime.now()) # Empty root node, first message in brach is always child of root, to allow for multiple branches including the first message in a conversation 
-        
 
     # Add a new message to the conversation
     def add_node(self, content: str, sender: str, model_name: Optional[str] = None) -> Node:
@@ -55,9 +54,14 @@ class Tree:
 
     def get_siblings(self, node_id: str) -> List[Node]:
         node = self.find_node(node_id)
-        if node and node.parent:
-            return sorted(node.parent.children, key=lambda x: x.timestamp)
-        return []
+        if node and node.parent and node != self.root:
+            siblings = sorted(node.parent.children, key=lambda x: x.timestamp)
+            logging.warning(f"Siblings for Node ID : {node.id}")
+            for index, sibling in enumerate(siblings):
+                logging.warning(f"Node ID: {sibling.id}, Index: {index}")
+            return siblings
+        else:
+            return []
 
     def get_current_branch(self) -> List[Node]:
         branch = []
@@ -66,6 +70,12 @@ class Tree:
             branch.append(current)
             current = current.parent
         return list(reversed(branch))
+    
+    def get_leaf_node(self, node):
+        while node.children:
+            node = node.children[0]
+        return node
+
 
 # Conversation class encapsulates the entire conversation structure
 class Conversation:
@@ -92,10 +102,7 @@ class Conversation:
 
     # Get the siblings of a specific message in the conversation from its ID
     def get_siblings(self, node_id: str) -> List[Node]:
-        node = self.tree.find_node(node_id)
-        if node and node.parent and node.parent != self.tree.root:
-            return sorted(node.parent.children, key=lambda x: x.timestamp)
-        return []
+        return self.tree.get_siblings(node_id)
 
     # Find a specific message in the conversation from its ID
     def find_node(self, node_id: str) -> Optional[Node]:

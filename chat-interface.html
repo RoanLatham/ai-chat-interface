@@ -785,30 +785,22 @@
 
       async function navigateBranch(messageContainer, direction) {
         try {
-          const response = await fetch("/get_siblings", {
+          const response = await fetch("/switch_branch", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ node_id: messageContainer.dataset.nodeId }),
+            body: JSON.stringify({
+              node_id: messageContainer.dataset.nodeId,
+              direction: direction,
+            }),
           });
           const data = await response.json();
-          const siblings = data.siblings;
-          const currentIndex = siblings.findIndex(
-            (sibling) => sibling.id === messageContainer.dataset.nodeId
-          );
-          const newIndex =
-            direction === "left" ? currentIndex - 1 : currentIndex + 1;
-
-          if (newIndex >= 0 && newIndex < siblings.length) {
+          if (data.success) {
             await loadConversation(currentConversationId);
+          } else {
+            throw new Error(data.error || "Failed to switch branch");
           }
         } catch (error) {
           console.error("Error navigating branch:", error);
-          addMessage({
-            id: Date.now().toString(),
-            content: error.message,
-            sender: "System",
-            timestamp: null,
-          });
         }
       }
 
