@@ -1019,6 +1019,7 @@
       function createConversationItem(conv) {
         const item = document.createElement("div");
         item.classList.add("conversation-item");
+        item.dataset.conversationId = conv.id;
 
         const text = document.createElement("span");
         text.textContent = conv.name;
@@ -1107,7 +1108,7 @@
       function highlightActiveConversation() {
         document.querySelectorAll(".conversation-item").forEach((item) => {
           item.classList.remove("active");
-          if (item.textContent === currentConversationId) {
+          if (item.dataset.conversationId === currentConversationId) {
             item.classList.add("active");
           }
         });
