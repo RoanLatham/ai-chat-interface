@@ -557,7 +557,7 @@
             id: Date.now().toString(),
             content: error.message,
             sender: "System",
-            timestamp: Date.now().toString(),
+            timestamp: null,
           });
         }
       }
@@ -758,7 +758,7 @@
                   id: Date.now().toString(),
                   content: "Error editing message:" + error.message,
                   sender: "System",
-                  timestamp: Date.now().toString(),
+                  timestamp: null,
                 });
               }
             });
@@ -768,12 +768,12 @@
             throw new Error(data.error || "Failed to get original content");
           }
         } catch (error) {
-          console.error("Error preparing message for editing:", error);
+          console.error("Error preparing message for editing: ", error);
           addMessage({
             id: Date.now().toString(),
-            content: "Error preparing message for editing:" + error.message,
+            content: "Error preparing message for editing: " + error.message,
             sender: "System",
-            timestamp: Date.now().toString(),
+            timestamp: null,
           });
         }
       }
@@ -802,7 +802,7 @@
             id: Date.now().toString(),
             content: error.message,
             sender: "System",
-            timestamp: Date.now().toString(),
+            timestamp: null,
           });
         }
       }
@@ -846,7 +846,7 @@
               id: Date.now().toString(),
               content: "An error occurred while processing your request.",
               sender: "System",
-              timestamp: Date.now().toString(),
+              timestamp: null,
             });
           }
         }
@@ -905,7 +905,7 @@
             id: Date.now().toString(),
             content: error.message,
             sender: "System",
-            timestamp: Date.now().toString(),
+            timestamp: null,
           });
         }
       }
@@ -945,7 +945,7 @@
             id: Date.now().toString(),
             content: error.message,
             sender: "System",
-            timestamp: Date.now().toString(),
+            timestamp: null,
           });
         }
       }
@@ -966,7 +966,7 @@
           id: Date.now().toString(),
           content: "System prompt updated",
           sender: "System",
-          timestamp: Date.now().toString(),
+          timestamp: null,
         });
 
         try {
@@ -987,7 +987,7 @@
             id: Date.now().toString(),
             content: error.message,
             sender: "System",
-            timestamp: Date.now().toString(),
+            timestamp: null,
           });
         }
       });
@@ -1008,7 +1008,7 @@
             id: Date.now().toString(),
             content: error.message,
             sender: "System",
-            timestamp: Date.now().toString(),
+            timestamp: null,
           });
         }
       });
@@ -1054,7 +1054,7 @@
             id: Date.now().toString(),
             content: error.message,
             sender: "System",
-            timestamp: Date.now().toString(),
+            timestamp: null,
           });
         }
       }
@@ -1076,7 +1076,7 @@
             id: Date.now().toString(),
             content: error.message,
             sender: "System",
-            timestamp: Date.now().toString(),
+            timestamp: null,
           });
         }
       }
@@ -1099,7 +1099,7 @@
             id: Date.now().toString(),
             content: error.message,
             sender: "System",
-            timestamp: Date.now().toString(),
+            timestamp: null,
           });
         }
       }
@@ -1130,7 +1130,7 @@
             id: Date.now().toString(),
             content: error.message,
             sender: "System",
-            timestamp: Date.now().toString(),
+            timestamp: null,
           });
         }
       }
@@ -1150,7 +1150,7 @@
             id: Date.now().toString(),
             content: error.message,
             sender: "System",
-            timestamp: Date.now().toString(),
+            timestamp: null,
           });
         }
       }
