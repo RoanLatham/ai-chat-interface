@@ -328,7 +328,6 @@ def get_siblings():
     
     if current_conversation:
         siblings = current_conversation.get_siblings(node_id)
-        logging.info(f"Siblings for node_id {node_id}: {siblings}")
         return jsonify({
             'siblings': [
                 {

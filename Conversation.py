@@ -56,9 +56,6 @@ class Tree:
         node = self.find_node(node_id)
         if node and node.parent and node != self.root:
             siblings = sorted(node.parent.children, key=lambda x: x.timestamp)
-            logging.warning(f"Siblings for Node ID : {node.id}")
-            for index, sibling in enumerate(siblings):
-                logging.warning(f"Node ID: {sibling.id}, Index: {index}")
             return siblings
         else:
             return []
