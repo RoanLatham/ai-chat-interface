@@ -104,7 +104,7 @@
         flex-direction: column;
         margin-bottom: 15px;
         max-width: 80%;
-        /* animation: fadeIn 0.3s ease-out;  not sure if one anim or the 2 different anim's is better*/
+        /* animation: fadeInUp  0.3s ease-out;  not sure if one anim or the 2 different anim's is better*/
       }
 
       .ai-message-container {
@@ -118,7 +118,7 @@
       .message {
         padding: 10px 15px;
         border-radius: 20px;
-        animation: fadeIn 0.3s ease-out;
+        animation: fadeInUp 0.3s ease-out;
       }
 
       /* text block styles */
@@ -158,7 +158,7 @@
         font-size: 0.8em;
         color: var(--subtle-text-color);
         margin-top: 5px;
-        animation: fadeIn 0.1s ease-out;
+        animation: fadeInUp 0.1s ease-out;
       }
 
       .ai-info {
@@ -173,7 +173,7 @@
         align-self: center;
       }
 
-      @keyframes fadeIn {
+      @keyframes fadeInUp {
         from {
           opacity: 0;
           transform: translateY(10px);
@@ -181,6 +181,17 @@
         to {
           opacity: 1;
           transform: translateY(0);
+        }
+      }
+
+      @keyframes fadeOutDown {
+        from {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        to {
+          opacity: 0;
+          transform: translateY(10px);
         }
       }
 
@@ -195,6 +206,18 @@
         color: #2d3436;
       }
 
+      .typing-message {
+        background-color: var(--conversation-bg);
+        display: flex;
+        align-items: center;
+        padding: 10px 15px;
+      }
+
+      .typing-message.fade-out {
+        animation: fadeOutDown 0.3s ease-out forwards;
+        position: absolute;
+      }
+
       .system-message {
         align-self: center;
         background-color: var(--accent-color);
@@ -206,6 +229,49 @@
         font-size: 0.8em;
         color: var(--subtle-text-color);
         margin-top: 5px;
+      }
+
+      .typing-dots {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 1rem; /* mimic the size of a message with a capital letter */
+      }
+
+      .typing-dots span {
+        height: 0.5rem;
+        width: 0.5rem;
+        margin: 0 4px;
+        background-color: var(--text-color);
+        display: block;
+        border-radius: 50%;
+        opacity: 0.4;
+        animation: typing 1s infinite ease-in-out;
+      }
+
+      .typing-dots span:nth-child(1) {
+        animation-delay: 200ms;
+      }
+      .typing-dots span:nth-child(2) {
+        animation-delay: 300ms;
+      }
+      .typing-dots span:nth-child(3) {
+        animation-delay: 400ms;
+      }
+
+      @keyframes typing {
+        0% {
+          transform: translateY(0.1rem);
+          opacity: 0.4;
+        }
+        50% {
+          transform: translateY(-0.4rem);
+          opacity: 0.8;
+        }
+        100% {
+          transform: translateY(0.1rem);
+          opacity: 0.4;
+        }
       }
 
       #input-container {
@@ -823,6 +889,16 @@
       async function sendMessage() {
         const message = userInput.value.trim();
         if (message) {
+          addMessage({
+            id: Date.now().toString(),
+            content: message,
+            sender: "Human",
+            timestamp: null,
+          });
+          userInput.value = "";
+
+          showTypingIndicator();
+
           try {
             const response = await fetch("/chat", {
               method: "POST",
@@ -834,13 +910,7 @@
               }),
             });
             const data = await response.json();
-            // TODO: add ghost message upon sending, keep track of messages the ned update when response is received
-            addMessage({
-              id: data.human_node_id,
-              content: message,
-              sender: "Human",
-              timestamp: null,
-            });
+            removeTypingIndicator();
             addMessage({
               id: data.ai_node_id,
               content: data.response,
@@ -848,7 +918,6 @@
               timestamp: data.timestamp,
               model_name: data.model_name,
             });
-            userInput.value = "";
             if (data.conversation_id !== currentConversationId) {
               currentConversationId = data.conversation_id;
               await loadConversations();
@@ -856,13 +925,37 @@
             }
           } catch (error) {
             console.error("Error:", error);
+            removeTypingIndicator();
             addMessage({
               id: Date.now().toString(),
               content: "An error occurred while processing your request.",
               sender: "System",
-              timestamp: null,
+              timestamp: new Date().toISOString(),
             });
           }
+        }
+      }
+
+      function showTypingIndicator() {
+        const typingIndicator = document.createElement("div");
+        typingIndicator.className =
+          "message-container ai-message-container typing-indicator";
+        typingIndicator.innerHTML =
+          '<div class="message ai-message typing-message"><div class="typing-dots"><span></span><span></span><span></span></div></div>';
+        chatContainer.appendChild(typingIndicator);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      function removeTypingIndicator() {
+        const typingIndicator = document.querySelector(".typing-indicator");
+        const typingMessage = document.querySelector(".typing-message");
+        if (typingIndicator) {
+          if (typingMessage) {
+            typingMessage.classList.add("fade-out");
+          }
+          setTimeout(() => {
+            typingIndicator.remove();
+          }, 300); // Matches the fadDownOut animation duration
         }
       }
 
