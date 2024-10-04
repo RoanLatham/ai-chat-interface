@@ -99,7 +99,7 @@ def load_model(model_name):
         selected_model_path = os.path.join(MODELS_DIR, model_name)
         # Convert backslashes to forward slashes and ensure it starts with "./"
         selected_model_path = "./" + selected_model_path.replace("\\", "/")
-        print(f"Loading model: {selected_model_path}")
+        logging.info(f"Loading model: {selected_model_path}")
         current_model = Llama(model_path=selected_model_path, n_ctx=4096, n_threads=8, seed=42, f16_kv=True, use_mlock=True)
         current_model_name = model_name
     return current_model
@@ -257,9 +257,7 @@ def chat():
         naming_response = current_model(naming_prompt, max_tokens=10, stop=["\n"], temperature=0.7)
         conversation_name = naming_response['choices'][0]['text'].strip()
         current_conversation = create_conversation(conversation_name)
-        print("new conversation created with id: ", current_conversation.id)
-        print("conversation has root node: ", current_conversation.tree.root)
-        print("conversation has current node: ", current_conversation.tree.current_node)
+        logging.info("new conversation created with id: ", current_conversation.id)
     
     new_node = current_conversation.add_message(user_input, "Human")
     
@@ -309,7 +307,7 @@ def edit_message():
 def get_original_content():
     data = request.json
     node_id = data['node_id']
-    print(f"Getting original content for node_id: {node_id}")
+    logging.info(f"Getting original content for node_id: {node_id}")
     
     if current_conversation:
         node = current_conversation.find_node(node_id)
