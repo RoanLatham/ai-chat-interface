@@ -641,15 +641,21 @@
       }
 
       function formatMessage(content) {
-        return content.replace(
+        const formattedContent = content.replace(
           /```(\w+)?\n([\s\S]*?)```/g,
           (match, lang, code) => {
             const language = lang || "";
-            return `<pre><code class="hljs ${language}">${
-              hljs.highlightAuto(code.trim(), [language]).value
-            }</code></pre>`;
+            const highlightedCode = hljs.highlightAuto(
+              code.trim(),
+              language ? [language] : undefined
+            ).value;
+            const detectedLanguage =
+              lang || hljs.highlightAuto(code.trim()).language || "plaintext";
+            return `<pre><code class="hljs ${language}">${highlightedCode}</code><div class="language-label">Language: ${detectedLanguage}</div></pre>`;
           }
         );
+
+        return formattedContent;
       }
 
       function addMessage(message) {
