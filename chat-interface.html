@@ -739,6 +739,11 @@
                   body: JSON.stringify({
                     node_id: nodeId,
                     new_content: newContent,
+                    sender: messageContainer.classList.contains(
+                      "human-message-container"
+                    )
+                      ? "Human"
+                      : "AI",
                   }),
                 });
                 const data = await response.json();
@@ -747,16 +752,6 @@
                   messageElement.innerHTML = formatMessage(newContent);
                   updateSiblingArrows(data.new_node_id);
                   // TODO add proper implementation to re-render just chidden messages
-
-                  // Add new AI response
-                  // addMessage({
-                  //   id: data.ai_node_id,
-                  //   content: data.ai_response,
-                  //   sender: "AI",
-                  //   timestamp: data.ai_timestamp,
-                  //   model_name: currentModel,
-                  // });
-
                   loadConversation(currentConversationId);
                 } else {
                   throw new Error(data.error || "Failed to edit message");
