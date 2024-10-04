@@ -244,6 +244,21 @@ def edit_message():
     
     return jsonify({'success': False, 'error': 'Failed to edit message'}), 400
 
+@app.route('/get_original_content', methods=['POST'])
+def get_original_content():
+    data = request.json
+    node_id = data['node_id']
+    
+    if current_conversation:
+        node = current_conversation.find_node(node_id)
+        if node:
+            return jsonify({
+                'success': True,
+                'content': node.content
+            })
+    
+    return jsonify({'success': False, 'error': 'Node not found'}), 404
+
 @app.route('/get_siblings', methods=['POST'])
 def get_siblings():
     data = request.json

@@ -695,9 +695,20 @@
 
       async function editMessage(messageContainer) {
         const messageElement = messageContainer.querySelector(".message");
-        const originalContent = messageElement.innerHTML;
+        const nodeId = messageContainer.dataset.nodeId;
 
-        messageElement.innerHTML = `
+        try {
+          const response = await fetch("/get_original_content", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ node_id: nodeId }),
+          });
+          const data = await response.json();
+
+          if (data.success) {
+            const originalContent = data.content;
+
+            messageElement.innerHTML = `
                 <textarea class="editing">${originalContent}</textarea>
                 <div class="edit-controls">
                     <button class="cancel-edit">Cancel</button>
@@ -705,48 +716,60 @@
                 </div>
             `;
 
-        const textarea = messageElement.querySelector("textarea");
-        const cancelButton = messageElement.querySelector(".cancel-edit");
-        const submitButton = messageElement.querySelector(".submit-edit");
+            const textarea = messageElement.querySelector("textarea");
+            const cancelButton = messageElement.querySelector(".cancel-edit");
+            const submitButton = messageElement.querySelector(".submit-edit");
 
-        cancelButton.addEventListener("click", () => {
-          messageElement.innerHTML = formatMessage(originalContent);
-        });
+            cancelButton.addEventListener("click", () => {
+              messageElement.innerHTML = formatMessage(originalContent);
+            });
 
-        submitButton.addEventListener("click", async () => {
-          const newContent = textarea.value;
-          try {
-            const response = await fetch("/edit_message", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                node_id: messageContainer.dataset.nodeId,
-                new_content: newContent,
-              }),
+            submitButton.addEventListener("click", async () => {
+              const newContent = textarea.value;
+              try {
+                const response = await fetch("/edit_message", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    node_id: nodeId,
+                    new_content: newContent,
+                  }),
+                });
+                const data = await response.json();
+                if (data.success) {
+                  messageContainer.dataset.nodeId = data.new_node_id;
+                  messageElement.innerHTML = formatMessage(newContent);
+                  updateSiblingArrows(data.new_node_id);
+                  // TODO add proper implementation to re-render just chidden messages
+                  await loadConversation(currentConversationId);
+                } else {
+                  throw new Error(data.error || "Failed to edit message");
+                }
+              } catch (error) {
+                console.error("Error editing message:", error);
+                messageElement.innerHTML = formatMessage(originalContent);
+                addMessage({
+                  id: Date.now().toString(),
+                  content: "Error editing message:" + error.message,
+                  sender: "System",
+                  timestamp: Date.now().toString(),
+                });
+              }
             });
-            const data = await response.json();
-            if (data.success) {
-              messageContainer.dataset.nodeId = data.new_node_id;
-              messageElement.innerHTML = formatMessage(newContent);
-              updateSiblingArrows(data.new_node_id);
-              // TODO add proper implementation to re-render just chidden messages
-              await loadConversation(currentConversationId);
-            } else {
-              throw new Error(data.error || "Failed to edit message");
-            }
-          } catch (error) {
-            console.error("Error editing message:", error);
-            messageElement.innerHTML = originalContent;
-            addMessage({
-              id: Date.now().toString(),
-              content: "Error editing message:" + error.message,
-              sender: "System",
-              timestamp: Date.now().toString(),
-            });
+
+            textarea.focus();
+          } else {
+            throw new Error(data.error || "Failed to get original content");
           }
-        });
-
-        textarea.focus();
+        } catch (error) {
+          console.error("Error preparing message for editing:", error);
+          addMessage({
+            id: Date.now().toString(),
+            content: "Error preparing message for editing:" + error.message,
+            sender: "System",
+            timestamp: Date.now().toString(),
+          });
+        }
       }
 
       async function navigateBranch(messageContainer, direction) {
@@ -765,7 +788,7 @@
             direction === "left" ? currentIndex - 1 : currentIndex + 1;
 
           if (newIndex >= 0 && newIndex < siblings.length) {
-            await loadConversation(siblings[newIndex].id);
+            await loadConversation(currentConversationId);
           }
         } catch (error) {
           console.error("Error navigating branch:", error);
@@ -1074,30 +1097,6 @@
           });
         }
       }
-
-      // async function switchConversation(id) {
-      //   try {
-      //     const response = await fetch("/conversation/switch", {
-      //       method: "POST",
-      //       headers: { "Content-Type": "application/json" },
-      //       body: JSON.stringify({ id: id }),
-      //     });
-      //     const data = await response.json();
-      //     if (data.success) {
-      //       currentConversationId = id;
-      //       chatContainer.innerHTML = data.html_content || "";
-      //       highlightActiveConversation();
-      //     }
-      //   } catch (error) {
-      //     console.error("Error switching conversation:", error);
-      //     addMessage({
-      //       id: Date.now().toString(),
-      //       content: error.message,
-      //       sender: "System",
-      //       timestamp: Date.now().toString(),
-      //     });
-      //   }
-      // }
 
       function highlightActiveConversation() {
         document.querySelectorAll(".conversation-item").forEach((item) => {
