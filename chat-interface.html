@@ -582,34 +582,62 @@
           "message-info",
           `${message.sender.toLowerCase()}-info`
         );
-        infoElement.innerHTML = `
-                ${new Date(message.timestamp).toLocaleString()}
-                ${message.model_name ? `• Model: ${message.model_name}` : ""}
-                <span class="edit-icon" title="Edit message">✎</span>
-                <span class="nav-arrow left-arrow hidden" title="Previous version">◀</span>
-                <span class="nav-arrow right-arrow hidden" title="Next version">▶</span>
-            `;
+
+        const timestamp = message.timestamp
+          ? message.timestamp
+          : new Date().toISOString();
+        infoElement.appendChild(createTimestampElement(timestamp));
+
+        if (message.sender === "AI") {
+          infoElement.appendChild(createModelNameElement(message.model_name));
+        }
+
+        if (message.sender === "Human" || message.sender === "AI") {
+          infoElement.appendChild(createEditIcon(messageContainer));
+          infoElement.appendChild(createNavArrow("left", messageContainer));
+          infoElement.appendChild(createNavArrow("right", messageContainer));
+        }
 
         messageContainer.appendChild(messageElement);
         messageContainer.appendChild(infoElement);
 
-        attachMessageEventListeners(messageContainer);
-
         return messageContainer;
       }
 
-      function attachMessageEventListeners(messageContainer) {
-        const editIcon = messageContainer.querySelector(".edit-icon");
-        const leftArrow = messageContainer.querySelector(".left-arrow");
-        const rightArrow = messageContainer.querySelector(".right-arrow");
+      function createTimestampElement(timestamp) {
+        const timestampElement = document.createElement("span");
+        timestampElement.classList.add("timestamp");
+        timestampElement.textContent = new Date(timestamp).toLocaleString();
+        return timestampElement;
+      }
 
+      function createModelNameElement(modelName) {
+        if (!modelName) return document.createDocumentFragment();
+        const modelElement = document.createElement("span");
+        modelElement.classList.add("model-name");
+        modelElement.textContent = `• Model: ${modelName}`;
+        return modelElement;
+      }
+
+      function createEditIcon(messageContainer) {
+        const editIcon = document.createElement("span");
+        editIcon.classList.add("edit-icon");
+        editIcon.title = "Edit message";
+        editIcon.textContent = "✎";
         editIcon.addEventListener("click", () => editMessage(messageContainer));
-        leftArrow.addEventListener("click", () =>
-          navigateBranch(messageContainer, "left")
+        return editIcon;
+      }
+
+      function createNavArrow(direction, messageContainer) {
+        const arrow = document.createElement("span");
+        arrow.classList.add("nav-arrow", `${direction}-arrow`, "hidden");
+        arrow.title =
+          direction === "left" ? "Previous version" : "Next version";
+        arrow.textContent = direction === "left" ? "◀" : "▶";
+        arrow.addEventListener("click", () =>
+          navigateBranch(messageContainer, direction)
         );
-        rightArrow.addEventListener("click", () =>
-          navigateBranch(messageContainer, "right")
-        );
+        return arrow;
       }
 
       function formatMessage(content) {
@@ -632,6 +660,13 @@
       }
 
       async function updateSiblingArrows(nodeId) {
+        const messageContainer = document.querySelector(
+          `[data-node-id="${nodeId}"]`
+        );
+        if (messageContainer.classList.contains("system-message-container")) {
+          return; // Exit the function if it's a system message
+        }
+
         try {
           const response = await fetch("/get_siblings", {
             method: "POST",
@@ -639,9 +674,7 @@
             body: JSON.stringify({ node_id: nodeId }),
           });
           const data = await response.json();
-          const messageContainer = document.querySelector(
-            `[data-node-id="${nodeId}"]`
-          );
+
           const leftArrow = messageContainer.querySelector(".left-arrow");
           const rightArrow = messageContainer.querySelector(".right-arrow");
 
@@ -657,12 +690,6 @@
           );
         } catch (error) {
           console.error("Error updating sibling arrows:", error);
-          addMessage({
-            id: Date.now().toString(),
-            content: error.message,
-            sender: "System",
-            timestamp: Date.now().toString(),
-          });
         }
       }
 
@@ -796,16 +823,6 @@
         }
       }
 
-      modelSelect.addEventListener("change", (e) => {
-        currentModel = e.target.value;
-        addMessage({
-          id: Date.now().toString(),
-          content: `Switched to model: ${currentModel}`,
-          sender: "System",
-          timestamp: new Date().toISOString(),
-        });
-      });
-
       userInput.addEventListener("input", function () {
         this.style.height = "auto";
         this.style.height = this.scrollHeight + "px";
@@ -870,7 +887,7 @@
           id: Date.now().toString(),
           content: `Switched to model: ${currentModel}`,
           sender: "System",
-          timestamp: Date.now().toString(),
+          timestamp: null,
         });
       });
 
