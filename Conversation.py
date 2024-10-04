@@ -129,7 +129,7 @@ class Conversation:
     def get_html_content(self) -> str:
         return self.html_content
 
-# Utility function to list all saved conversations in a directory
+# Utility function to list the names sand IDs of all saved conversations in a directory
 def list_conversations(directory: str) -> Dict[str, str]:
     conversations = {}
     for f in os.listdir(directory):
