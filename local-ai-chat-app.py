@@ -145,8 +145,6 @@ def switch_conversation():
         ]
     })
 
-
-
 @app.route('/conversation/delete', methods=['POST'])
 def delete_conversation():
     global current_conversation
@@ -204,6 +202,19 @@ def get_current_conversation():
 #     else:
 #         return jsonify({'error': 'No active conversation'}), 400
 
+def generate_ai_response(conversation: Conversation):
+    conversation_history = "\n".join([f"{node.sender}: {node.content}" for node in conversation.get_current_branch()])
+    #TODO trim start of conversation history to a limit of X tokens
+    full_prompt = f"{SUPER_SYSTEM_PROMPT}\n\nsystem prompt: {current_system_prompt}\n\n{conversation_history}\nAI:"
+    
+    response = current_model(full_prompt, max_tokens=10000, stop=["Human:"], temperature=0.7, top_p=0.9, top_k=40, repeat_penalty=1.1, presence_penalty=0.1, frequency_penalty=0.01, mirostat_mode=2, mirostat_tau=5.0, mirostat_eta=0.1, echo=True)
+    ai_response = response['choices'][0]['text'].split("AI:")[-1].strip()
+    
+    ai_node = conversation.add_message(ai_response, "AI", current_model_name)
+    save_conversation(conversation, CONVERSATIONS_DIR)
+    
+    return ai_response, ai_node
+
 @app.route('/chat', methods=['POST'])
 def chat():
     global current_system_prompt, current_model, current_conversation, current_model_name
@@ -217,24 +228,17 @@ def chat():
         current_model = load_model(model_name)
     
     if current_conversation is None:
-        # Generate a name for the new conversation
         naming_prompt = f"{NAMING_PROMPT}\n\nUser's message: {user_input}\n\nTitle:"
         naming_response = current_model(naming_prompt, max_tokens=10, stop=["\n"], temperature=0.7)
         conversation_name = naming_response['choices'][0]['text'].strip()
-        # conversation_name = str(uuid.uuid4())
         current_conversation = create_conversation(conversation_name)
+        print("new conversation created with id: ", current_conversation.id)
+        print("conversation has root node: ", current_conversation.tree.root)
+        print("conversation has current node: ", current_conversation.tree.current_node)
     
     new_node = current_conversation.add_message(user_input, "Human")
     
-    conversation_history = "\n".join([f"{node.sender}: {node.content}" for node in current_conversation.get_current_branch()])
-    #TODO trim start of conversation history to a limit of X tokens
-    full_prompt = f"{SUPER_SYSTEM_PROMPT}\n\nsystem prompt: {current_system_prompt}\n\n{conversation_history}\nHuman: {user_input}\nAI:"
-    
-    response = current_model(full_prompt, max_tokens=10000, stop=["Human:"], temperature=0.7, top_p=0.9, top_k=40, repeat_penalty=1.1, presence_penalty=0.1, frequency_penalty=0.01, mirostat_mode=2, mirostat_tau=5.0, mirostat_eta=0.1, echo=True)
-    ai_response = response['choices'][0]['text'].split("AI:")[-1].strip()
-    
-    ai_node = current_conversation.add_message(ai_response, "AI", current_model_name)
-    save_conversation(current_conversation, CONVERSATIONS_DIR)
+    ai_response, ai_node = generate_ai_response(current_conversation)
     
     return jsonify({
         'response': ai_response,
@@ -256,13 +260,18 @@ def edit_message():
         new_node = current_conversation.edit_message(node_id, new_content)
         if new_node:
             save_conversation(current_conversation, CONVERSATIONS_DIR)
+            
+            # Generate new AI response for edited message
+            ai_response, ai_node = generate_ai_response(current_conversation)
+            
             return jsonify({
                 'success': True,
                 'new_node_id': new_node.id,
-                'timestamp': new_node.timestamp.isoformat()
+                'timestamp': new_node.timestamp.isoformat(),
+                'ai_response': ai_response,
+                'ai_node_id': ai_node.id,
+                'ai_timestamp': ai_node.timestamp.isoformat()
             })
-        
-            # TODO: generate new response for edited message
     
     return jsonify({'success': False, 'error': 'Failed to edit message'}), 400
 
@@ -270,6 +279,7 @@ def edit_message():
 def get_original_content():
     data = request.json
     node_id = data['node_id']
+    print(f"Getting original content for node_id: {node_id}")
     
     if current_conversation:
         node = current_conversation.find_node(node_id)

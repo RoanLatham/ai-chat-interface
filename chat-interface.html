@@ -747,7 +747,17 @@
                   messageElement.innerHTML = formatMessage(newContent);
                   updateSiblingArrows(data.new_node_id);
                   // TODO add proper implementation to re-render just chidden messages
-                  await loadConversation(currentConversationId);
+
+                  // Add new AI response
+                  // addMessage({
+                  //   id: data.ai_node_id,
+                  //   content: data.ai_response,
+                  //   sender: "AI",
+                  //   timestamp: data.ai_timestamp,
+                  //   model_name: currentModel,
+                  // });
+
+                  loadConversation(currentConversationId);
                 } else {
                   throw new Error(data.error || "Failed to edit message");
                 }
@@ -821,11 +831,12 @@
               }),
             });
             const data = await response.json();
+            // TODO: add ghost message upon sending, keep track of messages the ned update when response is received
             addMessage({
               id: data.human_node_id,
               content: message,
               sender: "Human",
-              timestamp: Date.now().toString(),
+              timestamp: null,
             });
             addMessage({
               id: data.ai_node_id,
