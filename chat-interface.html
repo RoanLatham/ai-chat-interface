@@ -103,6 +103,7 @@
         display: flex;
         flex-direction: column;
         margin-bottom: 15px;
+        max-width: 80%;
         /* animation: fadeIn 0.3s ease-out;  not sure if one anim or the 2 different anim's is better*/
       }
 
@@ -115,7 +116,6 @@
       }
 
       .message {
-        max-width: 80%;
         padding: 10px 15px;
         border-radius: 20px;
         animation: fadeIn 0.3s ease-out;
@@ -237,11 +237,20 @@
         overflow-y: auto;
         border-radius: 10px;
         flex-grow: 1;
+        padding: 0;
       }
 
       textarea {
         resize: none;
         font-family: inherit;
+        width: 100%;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        border: 1px solid var(--primary-color);
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 15px;
+        font-size: 1rem;
       }
 
       .button {
@@ -317,17 +326,6 @@
       .modal-content h2 {
         color: var(--primary-color);
         margin-bottom: 15px;
-      }
-
-      #system-prompt-input {
-        width: 100%;
-        background-color: var(--bg-color);
-        color: var(--text-color);
-        border: 1px solid var(--primary-color);
-        border-radius: 5px;
-        padding: 10px;
-        margin-bottom: 15px;
-        font-size: 1rem;
       }
 
       .modal-buttons {
@@ -460,17 +458,32 @@
       .edit-controls {
         display: flex;
         justify-content: flex-end;
-        margin-top: 5px;
+        gap: 10px;
+        margin-top: 10px;
       }
 
       .edit-controls button {
-        margin-left: 5px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: none;
+        font-size: inherit;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        background-color: var(--button-color);
+        color: var(--text-color);
+      }
+
+      .edit-controls button :hover {
+        background-color: var(--button-hover-color);
       }
 
       .editing {
-        border: 1px solid var(--primary-color);
+        border: 1px solid var(--button-color);
         padding: 5px;
         border-radius: 5px;
+        background-color: transparent;
+        min-width: 200px;
+        color: inherit;
       }
     </style>
   </head>
@@ -722,7 +735,9 @@
                 </div>
             `;
 
-            const textarea = messageElement.querySelector("textarea");
+            const textarea = messageElement.querySelector(".editing");
+            textarea.style.height = "auto";
+            textarea.style.height = textarea.scrollHeight + "px";
             const cancelButton = messageElement.querySelector(".cancel-edit");
             const submitButton = messageElement.querySelector(".submit-edit");
 
