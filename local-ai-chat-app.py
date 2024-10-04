@@ -101,14 +101,6 @@ def get_conversations():
     conversations = list_conversations(CONVERSATIONS_DIR)
     return jsonify(conversations)
 
-# @app.route('/conversation/new', methods=['POST'])
-# def new_conversation():
-#     global current_conversation
-#     conversation_name = "Naming..."  # You can implement AI-based naming here
-#     current_conversation = create_conversation(conversation_name)
-#     save_conversation(current_conversation, CONVERSATIONS_DIR)
-#     return jsonify({'id': current_conversation.id, 'name': current_conversation.name})
-
 @app.route('/conversation/switch', methods=['POST'])
 def switch_conversation():
     global current_conversation
@@ -118,9 +110,19 @@ def switch_conversation():
     current_conversation = load_conversation(conversation_id, CONVERSATIONS_DIR)
     return jsonify({
         'success': True,
-        'html_content': current_conversation.html_content,
-        'name': current_conversation.name
+        'conversation_id': current_conversation.id,
+        'conversation_name': current_conversation.name,
+        'branch': [
+            {
+                'id': node.id,
+                'content': node.content,
+                'sender': node.sender,
+                'timestamp': node.timestamp.isoformat(),
+                'model_name': node.model_name
+            } for node in current_conversation.get_current_branch()
+        ]
     })
+
 
 
 @app.route('/conversation/delete', methods=['POST'])
@@ -154,23 +156,31 @@ def get_current_conversation():
         return jsonify({
             'conversation_id': current_conversation.id,
             'conversation_name': current_conversation.name,
-            'html_content': current_conversation.html_content
+            'branch': [
+                {
+                    'id': node.id,
+                    'content': node.content,
+                    'sender': node.sender,
+                    'timestamp': node.timestamp.isoformat(),
+                    'model_name': node.model_name
+                } for node in current_conversation.get_current_branch()
+            ]
         })
     else:
-        return jsonify({'conversation_id': None, 'conversation_name': None, 'html_content': ''})
+        return jsonify({'conversation_id': None, 'conversation_name': None, 'branch': []})
 
-@app.route('/update_conversation_html', methods=['POST'])
-def update_conversation_html():
-    global current_conversation
-    data = request.json
-    html_content = data['html_content']
+# @app.route('/update_conversation_html', methods=['POST'])
+# def update_conversation_html():
+#     global current_conversation
+#     data = request.json
+#     html_content = data['html_content']
     
-    if current_conversation:
-        current_conversation.set_html_content(html_content)
-        save_conversation(current_conversation, CONVERSATIONS_DIR)
-        return jsonify({'success': True})
-    else:
-        return jsonify({'error': 'No active conversation'}), 400
+#     if current_conversation:
+#         current_conversation.set_html_content(html_content)
+#         save_conversation(current_conversation, CONVERSATIONS_DIR)
+#         return jsonify({'success': True})
+#     else:
+#         return jsonify({'error': 'No active conversation'}), 400
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -189,6 +199,7 @@ def chat():
         naming_prompt = f"{NAMING_PROMPT}\n\nUser's message: {user_input}\n\nTitle:"
         naming_response = current_model(naming_prompt, max_tokens=10, stop=["\n"], temperature=0.7)
         conversation_name = naming_response['choices'][0]['text'].strip()
+        # conversation_name = str(uuid.uuid4())
         current_conversation = create_conversation(conversation_name)
     
     new_node = current_conversation.add_message(user_input, "Human")
@@ -228,6 +239,8 @@ def edit_message():
                 'new_node_id': new_node.id,
                 'timestamp': new_node.timestamp.isoformat()
             })
+        
+            # TODO: generate new response for edited message
     
     return jsonify({'success': False, 'error': 'Failed to edit message'}), 400
 
@@ -252,27 +265,27 @@ def get_siblings():
     
     return jsonify({'siblings': []}), 400
 
-@app.route('/switch_branch', methods=['POST'])
-def switch_branch():
-    data = request.json
-    node_id = data['node_id']
+# @app.route('/switch_branch', methods=['POST'])
+# def switch_branch():
+#     data = request.json
+#     node_id = data['node_id']
     
-    if current_conversation:
-        current_conversation.navigate_to(node_id)
-        branch = current_conversation.get_current_branch()
-        return jsonify({
-            'branch': [
-                {
-                    'id': node.id,
-                    'content': node.content,
-                    'sender': node.sender,
-                    'timestamp': node.timestamp.isoformat(),
-                    'model_name': node.model_name
-                } for node in branch
-            ]
-        })
+#     if current_conversation:
+#         current_conversation.navigate_to(node_id)
+#         branch = current_conversation.get_current_branch()
+#         return jsonify({
+#             'branch': [
+#                 {
+#                     'id': node.id,
+#                     'content': node.content,
+#                     'sender': node.sender,
+#                     'timestamp': node.timestamp.isoformat(),
+#                     'model_name': node.model_name
+#                 } for node in branch
+#             ]
+#         })
     
-    return jsonify({'branch': []}), 400
+#     return jsonify({'branch': []}), 400
 
 @app.route('/system_prompt', methods=['GET'])
 def get_system_prompt():

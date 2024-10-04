@@ -110,7 +110,7 @@
         align-self: flex-start;
       }
 
-      .user-message-container {
+      .human-message-container {
         align-self: flex-end;
       }
 
@@ -165,7 +165,7 @@
         align-self: flex-start;
       }
 
-      .user-info {
+      .human-info {
         align-self: flex-end;
       }
 
@@ -184,7 +184,7 @@
         }
       }
 
-      .user-message {
+      .human-message {
         align-self: flex-end;
         background-color: var(--primary-color);
       }
@@ -439,6 +439,39 @@
         margin-right: 10px;
         fill: var(--text-color);
       }
+
+      .edit-icon,
+      .nav-arrow {
+        cursor: pointer;
+        margin-left: 5px;
+        opacity: 0.7;
+        transition: opacity 0.3s ease;
+      }
+
+      .edit-icon:hover,
+      .nav-arrow:hover {
+        opacity: 1;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .edit-controls {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 5px;
+      }
+
+      .edit-controls button {
+        margin-left: 5px;
+      }
+
+      .editing {
+        border: 1px solid var(--primary-color);
+        padding: 5px;
+        border-radius: 5px;
+      }
     </style>
   </head>
   <body>
@@ -502,6 +535,276 @@
       const modelSelect = document.getElementById("model-select");
 
       let currentModel = "";
+      let currentConversationId = null;
+
+      async function loadConversation(conversationId) {
+        try {
+          const response = await fetch(`/conversation/switch`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: conversationId }),
+          });
+          const data = await response.json();
+          if (data.success) {
+            chatContainer.innerHTML = "";
+            data.branch.forEach((message) => addMessage(message));
+            currentConversationId = data.conversation_id;
+            highlightActiveConversation();
+          }
+        } catch (error) {
+          console.error("Error loading conversation:", error);
+          addMessage({
+            id: Date.now().toString(),
+            content: error.message,
+            sender: "System",
+            timestamp: Date.now().toString(),
+          });
+        }
+      }
+
+      function createMessageElement(message) {
+        const messageContainer = document.createElement("div");
+        messageContainer.classList.add(
+          "message-container",
+          `${message.sender.toLowerCase()}-message-container`
+        );
+        messageContainer.dataset.nodeId = message.id;
+
+        const messageElement = document.createElement("div");
+        messageElement.classList.add(
+          "message",
+          `${message.sender.toLowerCase()}-message`
+        );
+        messageElement.innerHTML = formatMessage(message.content);
+
+        const infoElement = document.createElement("div");
+        infoElement.classList.add(
+          "message-info",
+          `${message.sender.toLowerCase()}-info`
+        );
+        infoElement.innerHTML = `
+                ${new Date(message.timestamp).toLocaleString()}
+                ${message.model_name ? `• Model: ${message.model_name}` : ""}
+                <span class="edit-icon" title="Edit message">✎</span>
+                <span class="nav-arrow left-arrow hidden" title="Previous version">◀</span>
+                <span class="nav-arrow right-arrow hidden" title="Next version">▶</span>
+            `;
+
+        messageContainer.appendChild(messageElement);
+        messageContainer.appendChild(infoElement);
+
+        attachMessageEventListeners(messageContainer);
+
+        return messageContainer;
+      }
+
+      function attachMessageEventListeners(messageContainer) {
+        const editIcon = messageContainer.querySelector(".edit-icon");
+        const leftArrow = messageContainer.querySelector(".left-arrow");
+        const rightArrow = messageContainer.querySelector(".right-arrow");
+
+        editIcon.addEventListener("click", () => editMessage(messageContainer));
+        leftArrow.addEventListener("click", () =>
+          navigateBranch(messageContainer, "left")
+        );
+        rightArrow.addEventListener("click", () =>
+          navigateBranch(messageContainer, "right")
+        );
+      }
+
+      function formatMessage(content) {
+        return content.replace(
+          /```(\w+)?\n([\s\S]*?)```/g,
+          (match, lang, code) => {
+            const language = lang || "";
+            return `<pre><code class="hljs ${language}">${
+              hljs.highlightAuto(code.trim(), [language]).value
+            }</code></pre>`;
+          }
+        );
+      }
+
+      function addMessage(message) {
+        const messageElement = createMessageElement(message);
+        chatContainer.appendChild(messageElement);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        updateSiblingArrows(message.id);
+      }
+
+      async function updateSiblingArrows(nodeId) {
+        try {
+          const response = await fetch("/get_siblings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ node_id: nodeId }),
+          });
+          const data = await response.json();
+          const messageContainer = document.querySelector(
+            `[data-node-id="${nodeId}"]`
+          );
+          const leftArrow = messageContainer.querySelector(".left-arrow");
+          const rightArrow = messageContainer.querySelector(".right-arrow");
+
+          const siblings = data.siblings;
+          const currentIndex = siblings.findIndex(
+            (sibling) => sibling.id === nodeId
+          );
+
+          leftArrow.classList.toggle("hidden", currentIndex === 0);
+          rightArrow.classList.toggle(
+            "hidden",
+            currentIndex === siblings.length - 1
+          );
+        } catch (error) {
+          console.error("Error updating sibling arrows:", error);
+          addMessage({
+            id: Date.now().toString(),
+            content: error.message,
+            sender: "System",
+            timestamp: Date.now().toString(),
+          });
+        }
+      }
+
+      async function editMessage(messageContainer) {
+        const messageElement = messageContainer.querySelector(".message");
+        const originalContent = messageElement.innerHTML;
+
+        messageElement.innerHTML = `
+                <textarea class="editing">${originalContent}</textarea>
+                <div class="edit-controls">
+                    <button class="cancel-edit">Cancel</button>
+                    <button class="submit-edit">Submit</button>
+                </div>
+            `;
+
+        const textarea = messageElement.querySelector("textarea");
+        const cancelButton = messageElement.querySelector(".cancel-edit");
+        const submitButton = messageElement.querySelector(".submit-edit");
+
+        cancelButton.addEventListener("click", () => {
+          messageElement.innerHTML = formatMessage(originalContent);
+        });
+
+        submitButton.addEventListener("click", async () => {
+          const newContent = textarea.value;
+          try {
+            const response = await fetch("/edit_message", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                node_id: messageContainer.dataset.nodeId,
+                new_content: newContent,
+              }),
+            });
+            const data = await response.json();
+            if (data.success) {
+              messageContainer.dataset.nodeId = data.new_node_id;
+              messageElement.innerHTML = formatMessage(newContent);
+              updateSiblingArrows(data.new_node_id);
+              // TODO add proper implementation to re-render just chidden messages
+              await loadConversation(currentConversationId);
+            } else {
+              throw new Error(data.error || "Failed to edit message");
+            }
+          } catch (error) {
+            console.error("Error editing message:", error);
+            messageElement.innerHTML = originalContent;
+            addMessage({
+              id: Date.now().toString(),
+              content: "Error editing message:" + error.message,
+              sender: "System",
+              timestamp: Date.now().toString(),
+            });
+          }
+        });
+
+        textarea.focus();
+      }
+
+      async function navigateBranch(messageContainer, direction) {
+        try {
+          const response = await fetch("/get_siblings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ node_id: messageContainer.dataset.nodeId }),
+          });
+          const data = await response.json();
+          const siblings = data.siblings;
+          const currentIndex = siblings.findIndex(
+            (sibling) => sibling.id === messageContainer.dataset.nodeId
+          );
+          const newIndex =
+            direction === "left" ? currentIndex - 1 : currentIndex + 1;
+
+          if (newIndex >= 0 && newIndex < siblings.length) {
+            await loadConversation(siblings[newIndex].id);
+          }
+        } catch (error) {
+          console.error("Error navigating branch:", error);
+          addMessage({
+            id: Date.now().toString(),
+            content: error.message,
+            sender: "System",
+            timestamp: Date.now().toString(),
+          });
+        }
+      }
+
+      async function sendMessage() {
+        const message = userInput.value.trim();
+        if (message) {
+          try {
+            const response = await fetch("/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                message: message,
+                model: currentModel,
+                system_prompt: currentSystemPrompt,
+              }),
+            });
+            const data = await response.json();
+            addMessage({
+              id: data.human_node_id,
+              content: message,
+              sender: "Human",
+              timestamp: Date.now().toString(),
+            });
+            addMessage({
+              id: data.ai_node_id,
+              content: data.response,
+              sender: "AI",
+              timestamp: data.timestamp,
+              model_name: data.model_name,
+            });
+            userInput.value = "";
+            if (data.conversation_id !== currentConversationId) {
+              currentConversationId = data.conversation_id;
+              await loadConversations();
+              highlightActiveConversation();
+            }
+          } catch (error) {
+            console.error("Error:", error);
+            addMessage({
+              id: Date.now().toString(),
+              content: "An error occurred while processing your request.",
+              sender: "System",
+              timestamp: Date.now().toString(),
+            });
+          }
+        }
+      }
+
+      modelSelect.addEventListener("change", (e) => {
+        currentModel = e.target.value;
+        addMessage({
+          id: Date.now().toString(),
+          content: `Switched to model: ${currentModel}`,
+          sender: "System",
+          timestamp: new Date().toISOString(),
+        });
+      });
 
       userInput.addEventListener("input", function () {
         this.style.height = "auto";
@@ -518,76 +821,25 @@
 
       sendButton.addEventListener("click", sendMessage);
 
-      sendButton.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
+      userInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           sendMessage();
         }
       });
 
-      userInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          if (e.shiftKey) {
-            // Allow new line when Shift+Enter is pressed
-            return;
-          } else {
-            // Send message when only Enter is pressed
-            e.preventDefault();
-            sendMessage();
-          }
-        }
-      });
-
-      function addMessage(sender, message, modelName, timestamp = null) {
-        const messageContainer = document.createElement("div");
-        messageContainer.classList.add("message-container");
-        messageContainer.classList.add(
-          `${sender.toLowerCase()}-message-container`
-        );
-
-        const messageElement = document.createElement("div");
-        messageElement.classList.add("message");
-        messageElement.classList.add(`${sender.toLowerCase()}-message`);
-
-        // Process text blocks
-        const formattedMessage = message.replace(
-          /```(\w+)?\n([\s\S]*?)```/g,
-          (match, lang, code) => {
-            const language = lang || "";
-            return `<pre><code class="hljs ${language}">${code.trim()}</code><div class="language-label"></div></pre>`;
-          }
-        );
-
-        messageElement.innerHTML = formattedMessage;
-
-        // Apply syntax highlighting and add language labels
-        messageElement.querySelectorAll("pre code").forEach((block) => {
-          hljs.highlightElement(block);
-          const detectedLanguage = block.result.language;
-          const languageLabel =
-            block.parentNode.querySelector(".language-label");
-          if (detectedLanguage && languageLabel) {
-            languageLabel.textContent = `Language: ${detectedLanguage}`;
-          }
-        });
-
-        const infoElement = document.createElement("div");
-        infoElement.classList.add("message-info");
-        infoElement.classList.add(`${sender.toLowerCase()}-info`);
-        infoElement.textContent = `${new Date(
-          timestamp || Date.now() //TODO receive the timestamp form the server and instead of using null
-        ).toLocaleString()}`;
-        if (modelName) {
-          infoElement.textContent += ` • Model: ${modelName}`;
-        }
-
-        messageContainer.appendChild(messageElement);
-        messageContainer.appendChild(infoElement);
-
-        chatContainer.appendChild(messageContainer);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-        updateConversationHtml();
-      }
+      // userInput.addEventListener("keydown", (e) => {
+      //   if (e.key === "Enter") {
+      //     if (e.shiftKey) {
+      //       // Allow new line when Shift+Enter is pressed
+      //       return;
+      //     } else {
+      //       // Send message when only Enter is pressed
+      //       e.preventDefault();
+      //       sendMessage();
+      //     }
+      //   }
+      // });
 
       async function loadModels() {
         try {
@@ -603,57 +855,24 @@
           currentModel = models[0];
         } catch (error) {
           console.error("Error loading models:", error);
-          addMessage("system", error.message);
-        }
-      }
-
-      async function sendMessage() {
-        const message = userInput.value.trim();
-        if (message) {
-          addMessage("user", message);
-          userInput.value = "";
-
-          // Reset the height of the textarea
-          userInput.style.height = "auto";
-          userInput.style.overflowY = "hidden";
-
-          try {
-            const response = await fetch("/chat", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                message: message,
-                model: currentModel,
-                system_prompt: currentSystemPrompt,
-              }),
-            });
-            const data = await response.json();
-            addMessage("AI", data.response, data.model_name, data.timestamp);
-            if (data.conversation_id !== currentConversationId) {
-              currentConversationId = data.conversation_id;
-              await loadConversations();
-              highlightActiveConversation();
-            }
-            await updateConversationHtml();
-          } catch (error) {
-            console.error("Error:", error);
-            addMessage(
-              "system",
-              "An error occurred while processing your request."
-            );
-          }
+          addMessage({
+            id: Date.now().toString(),
+            content: error.message,
+            sender: "System",
+            timestamp: Date.now().toString(),
+          });
         }
       }
 
       modelSelect.addEventListener("change", (e) => {
         currentModel = e.target.value;
-        addMessage("system", `Switched to model: ${currentModel}`);
+        addMessage({
+          id: Date.now().toString(),
+          content: `Switched to model: ${currentModel}`,
+          sender: "System",
+          timestamp: Date.now().toString(),
+        });
       });
-
-      // Load models when the page loads
-      loadModels();
 
       // System prompt scripts
       // Add a button to open the system prompt modal
@@ -676,6 +895,12 @@
           systemPromptInput.value = currentSystemPrompt;
         } catch (error) {
           console.error("Error loading system prompt:", error);
+          addMessage({
+            id: Date.now().toString(),
+            content: error.message,
+            sender: "System",
+            timestamp: Date.now().toString(),
+          });
         }
       }
 
@@ -691,7 +916,12 @@
       saveSystemPromptButton.addEventListener("click", async () => {
         currentSystemPrompt = systemPromptInput.value;
         systemPromptModal.style.display = "none";
-        addMessage("system", "System prompt updated.");
+        addMessage({
+          id: Date.now().toString(),
+          content: "System prompt updated",
+          sender: "System",
+          timestamp: Date.now().toString(),
+        });
 
         try {
           await fetch("/chat", {
@@ -707,6 +937,12 @@
           });
         } catch (error) {
           console.error("Error updating system prompt:", error);
+          addMessage({
+            id: Date.now().toString(),
+            content: error.message,
+            sender: "System",
+            timestamp: Date.now().toString(),
+          });
         }
       });
 
@@ -722,15 +958,17 @@
           systemPromptInput.value = data.default_system_prompt;
         } catch (error) {
           console.error("Error loading default system prompt:", error);
+          addMessage({
+            id: Date.now().toString(),
+            content: error.message,
+            sender: "System",
+            timestamp: Date.now().toString(),
+          });
         }
       });
 
-      // Load the initial system prompt when the page loads
-      loadSystemPrompt();
-
       // conversation system scripts
       const conversationList = document.getElementById("conversation-list");
-      let currentConversationId = null;
 
       function createConversationItem(conv) {
         const item = document.createElement("div");
@@ -750,7 +988,7 @@
         });
         item.appendChild(deleteButton);
 
-        item.addEventListener("click", () => switchConversation(conv.id));
+        item.addEventListener("click", () => loadConversation(conv.id));
         return item;
       }
 
@@ -766,6 +1004,12 @@
           highlightActiveConversation();
         } catch (error) {
           console.error("Error clearing conversation:", error);
+          addMessage({
+            id: Date.now().toString(),
+            content: error.message,
+            sender: "System",
+            timestamp: Date.now().toString(),
+          });
         }
       }
 
@@ -782,6 +1026,12 @@
           });
         } catch (error) {
           console.error("Error loading conversations:", error);
+          addMessage({
+            id: Date.now().toString(),
+            content: error.message,
+            sender: "System",
+            timestamp: Date.now().toString(),
+          });
         }
       }
 
@@ -799,37 +1049,36 @@
           }
         } catch (error) {
           console.error("Error deleting conversation:", error);
-        }
-      }
-
-      async function switchConversation(id) {
-        try {
-          const response = await fetch("/conversation/switch", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: id }),
+          addMessage({
+            id: Date.now().toString(),
+            content: error.message,
+            sender: "System",
+            timestamp: Date.now().toString(),
           });
-          const data = await response.json();
-          if (data.success) {
-            currentConversationId = id;
-            chatContainer.innerHTML = data.html_content || "";
-            highlightActiveConversation();
-          }
-        } catch (error) {
-          console.error("Error switching conversation:", error);
         }
       }
 
-      // async function newConversation() {
+      // async function switchConversation(id) {
       //   try {
-      //     const response = await fetch("/conversation/new", { method: "POST" });
+      //     const response = await fetch("/conversation/switch", {
+      //       method: "POST",
+      //       headers: { "Content-Type": "application/json" },
+      //       body: JSON.stringify({ id: id }),
+      //     });
       //     const data = await response.json();
-      //     currentConversationId = data.id;
-      //     chatContainer.innerHTML = "";
-      //     await loadConversations();
-      //     highlightActiveConversation();
+      //     if (data.success) {
+      //       currentConversationId = id;
+      //       chatContainer.innerHTML = data.html_content || "";
+      //       highlightActiveConversation();
+      //     }
       //   } catch (error) {
-      //     console.error("Error creating new conversation:", error);
+      //     console.error("Error switching conversation:", error);
+      //     addMessage({
+      //       id: Date.now().toString(),
+      //       content: error.message,
+      //       sender: "System",
+      //       timestamp: Date.now().toString(),
+      //     });
       //   }
       // }
 
@@ -855,11 +1104,14 @@
           });
         } catch (error) {
           console.error("Error updating conversation HTML:", error);
+          addMessage({
+            id: Date.now().toString(),
+            content: error.message,
+            sender: "System",
+            timestamp: Date.now().toString(),
+          });
         }
       }
-
-      // Load conversations when the page loads
-      loadConversations();
 
       async function loadCurrentConversation() {
         try {
@@ -872,11 +1124,20 @@
           }
         } catch (error) {
           console.error("Error loading current conversation:", error);
+          addMessage({
+            id: Date.now().toString(),
+            content: error.message,
+            sender: "System",
+            timestamp: Date.now().toString(),
+          });
         }
       }
 
-      // Call this function when the page loads
-      document.addEventListener("DOMContentLoaded", loadCurrentConversation);
+      // Initialize the chat interface
+      loadModels();
+      loadSystemPrompt();
+      loadConversations();
+      loadCurrentConversation();
     </script>
   </body>
 </html>
