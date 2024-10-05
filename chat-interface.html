@@ -1035,6 +1035,16 @@
         }
       });
 
+      function selectModel(modelName) {
+        const modelOption = modelSelect.querySelector(
+          `option[value="${modelName}"]`
+        );
+        if (modelOption) {
+          modelOption.selected = true;
+          currentModel = modelName;
+        }
+      }
+
       async function loadModels() {
         try {
           const response = await fetch("/models");
@@ -1042,11 +1052,11 @@
             const errorData = await response.json();
             throw new Error(errorData.error || "Failed to load AI models.");
           }
-          const models = await response.json();
-          modelSelect.innerHTML = models
+          const data = await response.json();
+          modelSelect.innerHTML = data.models
             .map((model) => `<option value="${model}">${model}</option>`)
             .join("");
-          currentModel = models[0];
+          selectModel(data.current_model);
         } catch (error) {
           console.error("Error loading models:", error);
           addMessage({

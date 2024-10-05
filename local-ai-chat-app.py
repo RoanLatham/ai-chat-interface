@@ -63,7 +63,11 @@ def models():
     available_models = get_available_models()
     if not available_models:
         return jsonify({"error": "No AI models found in the ai_models folder."}), 404
-    return jsonify(available_models)
+    return jsonify({
+        "models": available_models,
+        "current_model": current_model_name
+    })
+
 
 @app.route('/conversations', methods=['GET'])
 def get_conversations():
