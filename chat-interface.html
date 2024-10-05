@@ -782,6 +782,9 @@
       async function editMessage(messageContainer) {
         const messageElement = messageContainer.querySelector(".message");
         const nodeId = messageContainer.dataset.nodeId;
+        const isHumanMessage = messageContainer.classList.contains(
+          "human-message-container"
+        );
 
         try {
           const response = await fetch("/get_original_content", {
@@ -815,36 +818,51 @@
             submitButton.addEventListener("click", async () => {
               const newContent = textarea.value;
               try {
-                const response = await fetch("/edit_message", {
+                const editResponse = await fetch("/edit_message", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                     node_id: nodeId,
                     new_content: newContent,
-                    sender: messageContainer.classList.contains(
-                      "human-message-container"
-                    )
-                      ? "Human"
-                      : "AI",
+                    sender: isHumanMessage ? "Human" : "AI",
                   }),
                 });
-                const data = await response.json();
-                if (data.success) {
-                  moveConversationToTop(currentConversationId);
-                  messageContainer.dataset.nodeId = data.new_node_id;
+                const editData = await editResponse.json();
+                if (editData.success) {
+                  messageContainer.dataset.nodeId = editData.new_node_id;
                   messageElement.innerHTML = formatMessage(newContent);
-                  updateSiblingArrows(data.new_node_id);
-                  // TODO add proper implementation to re-render just chidden messages
-                  loadConversation(currentConversationId);
+                  updateSiblingArrows(editData.new_node_id);
+                  moveConversationToTop(currentConversationId);
+                  clearMessagesBelow(editData.new_node_id);
+
+                  if (isHumanMessage) {
+                    showTypingIndicator();
+                    const aiResponse = await fetch("/get_ai_response", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        conversation_id: currentConversationId,
+                      }),
+                    });
+                    const aiData = await aiResponse.json();
+                    removeTypingIndicator();
+                    addMessage({
+                      id: aiData.ai_node_id,
+                      content: aiData.response,
+                      sender: "AI",
+                      timestamp: aiData.timestamp,
+                      model_name: aiData.model_name,
+                    });
+                  }
                 } else {
-                  throw new Error(data.error || "Failed to edit message");
+                  throw new Error(editData.error || "Failed to edit message");
                 }
               } catch (error) {
                 console.error("Error editing message:", error);
                 messageElement.innerHTML = formatMessage(originalContent);
                 addMessage({
                   id: Date.now().toString(),
-                  content: "Error editing message:" + error.message,
+                  content: "Error editing message: " + error.message,
                   sender: "System",
                   timestamp: null,
                 });

@@ -263,23 +263,14 @@ def edit_message():
         if new_node:
             save_conversation(current_conversation, CONVERSATIONS_DIR)
             
-            if sender.lower() == 'human':
-                # Generate new AI response for edited human message
-                ai_response, ai_node = generate_ai_response(current_conversation)
-            else:
-                # No need to generate response for AI message edit
-                ai_response, ai_node = None, None
-            
             return jsonify({
                 'success': True,
                 'new_node_id': new_node.id,
                 'timestamp': new_node.timestamp.isoformat(),
-                'ai_response': ai_response,
-                'ai_node_id': ai_node.id if ai_node else None,
-                'ai_timestamp': ai_node.timestamp.isoformat() if ai_node else None
             })
     
     return jsonify({'success': False, 'error': 'Failed to edit message'}), 400
+
 
 @app.route('/get_original_content', methods=['POST'])
 def get_original_content():
