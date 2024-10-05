@@ -748,6 +748,8 @@
         chatContainer.appendChild(messageElement);
         chatContainer.scrollTop = chatContainer.scrollHeight;
         updateSiblingArrows(message.id);
+        // Quick way to apply the disabled state to all new elements correctly
+        setWaitingState(isWaitingForResponse);
       }
 
       async function updateSiblingArrows(nodeId) {
@@ -942,9 +944,9 @@
           )
           .forEach((el) => {
             el.disabled = waiting;
-            if (waiting) {
+            if (waiting && !el.classList.contains("disabled")) {
               el.classList.add("disabled");
-            } else {
+            } else if (!waiting) {
               el.classList.remove("disabled");
             }
           });
