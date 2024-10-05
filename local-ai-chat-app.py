@@ -28,13 +28,17 @@ def load_system_prompt():
 
 SUPER_SYSTEM_PROMPT = load_system_prompt()
 
-
-
-
-
 DEFAULT_SYSTEM_PROMPT = """You are a helpful, respectful, and honest AI assistant. Always provide accurate information and if you're unsure, admit it. Prioritize user safety and well-being in your responses. Be concise yet informative, and tailor your language to the user's level of understanding. Respect privacy and ethical boundaries in your interactions."""
 
 current_system_prompt = DEFAULT_SYSTEM_PROMPT
+
+CONVERSATION_INSTRUCTIONS_START = "The following are conversation-specific instructions provided by the user (Human) for this interaction:"
+
+CONVERSATION_HISTORY_START = """End of conversation-specific instructions.
+
+The conversation history begins below. Focus on the latest human response and continue the conversation accordingly:"""
+
+STOP_PHRASES = ["Human:", "End of example interactions."]
 
 def load_model(model_name):
     global current_model, current_model_name
@@ -43,7 +47,7 @@ def load_model(model_name):
         # Convert backslashes to forward slashes and ensure it starts with "./"
         selected_model_path = "./" + selected_model_path.replace("\\", "/")
         logging.info(f"Loading model: {selected_model_path}")
-        current_model = Llama(model_path=selected_model_path, n_ctx=8192, n_threads=8, seed=42, f16_kv=True, use_mlock=True)
+        current_model = Llama(model_path=selected_model_path, n_ctx=4096, n_threads=8, seed=42, f16_kv=True, use_mlock=True)
         current_model_name = model_name
     return current_model
 
@@ -179,9 +183,10 @@ def switch_branch():
 
 def generate_ai_response(conversation: Conversation):
     conversation_history = "\n".join([f"{node.sender}: {node.content}\nAI Internal Thought Process: {node.internal_monologue}" for node in conversation.get_current_branch()])
-    full_prompt = f"{SUPER_SYSTEM_PROMPT}\n\nsystem prompt: {current_system_prompt}\n\n{conversation_history}\nAI Internal Thought Process:"
+    # TODO limit conversation history to X amount of tokens
+    full_prompt = f"{SUPER_SYSTEM_PROMPT}\n\n{CONVERSATION_INSTRUCTIONS_START}\n{current_system_prompt}\n\n{CONVERSATION_HISTORY_START}\n{conversation_history}\nAI Internal Thought Process:"
     
-    response = current_model(full_prompt, max_tokens=10000, stop=["Human:"], temperature=0.7, top_p=0.9, top_k=40, repeat_penalty=1.1, presence_penalty=0.1, frequency_penalty=0.01, mirostat_mode=2, mirostat_tau=5.0, mirostat_eta=0.1, echo=True)
+    response = current_model(full_prompt, max_tokens=10000, stop=STOP_PHRASES, temperature=0.7, top_p=0.9, top_k=40, repeat_penalty=1.1, presence_penalty=0.1, frequency_penalty=0.01, mirostat_mode=2, mirostat_tau=5.0, mirostat_eta=0.1, echo=True)
     ai_full_response = response['choices'][0]['text'].split("AI Internal Thought Process:")[-1].strip()
     
     # Split the response into internal monologue and actual response
