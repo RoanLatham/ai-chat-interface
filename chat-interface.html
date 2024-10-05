@@ -830,6 +830,7 @@
                 });
                 const data = await response.json();
                 if (data.success) {
+                  moveConversationToTop(currentConversationId);
                   messageContainer.dataset.nodeId = data.new_node_id;
                   messageElement.innerHTML = formatMessage(newContent);
                   updateSiblingArrows(data.new_node_id);
@@ -895,6 +896,7 @@
             sender: "Human",
             timestamp: null,
           });
+          moveConversationToTop(currentConversationId);
           userInput.value = "";
 
           showTypingIndicator();
@@ -1175,8 +1177,8 @@
             conversationList.querySelector("#new-chat-button");
           conversationList.innerHTML = "";
           conversationList.appendChild(newChatButton);
-          Object.entries(conversations).forEach(([id, name]) => {
-            conversationList.appendChild(createConversationItem({ id, name }));
+          conversations.forEach((conv) => {
+            conversationList.appendChild(createConversationItem(conv));
           });
         } catch (error) {
           console.error("Error loading conversations:", error);
@@ -1186,6 +1188,21 @@
             sender: "System",
             timestamp: null,
           });
+        }
+      }
+
+      function moveConversationToTop(conversationId) {
+        const conversationItem = document.querySelector(
+          `.conversation-item[data-conversation-id="${conversationId}"]`
+        );
+        if (conversationItem) {
+          const conversationList = document.getElementById("conversation-list");
+          const newChatButton =
+            conversationList.querySelector("#new-chat-button");
+          conversationList.insertBefore(
+            conversationItem,
+            newChatButton.nextSibling
+          );
         }
       }
 
@@ -1221,27 +1238,27 @@
         });
       }
 
-      async function updateConversationHtml() {
-        try {
-          await fetch("/update_conversation_html", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              html_content: chatContainer.innerHTML,
-            }),
-          });
-        } catch (error) {
-          console.error("Error updating conversation HTML:", error);
-          addMessage({
-            id: Date.now().toString(),
-            content: error.message,
-            sender: "System",
-            timestamp: null,
-          });
-        }
-      }
+      // async function updateConversationHtml() {
+      //   try {
+      //     await fetch("/update_conversation_html", {
+      //       method: "POST",
+      //       headers: {
+      //         "Content-Type": "application/json",
+      //       },
+      //       body: JSON.stringify({
+      //         html_content: chatContainer.innerHTML,
+      //       }),
+      //     });
+      //   } catch (error) {
+      //     console.error("Error updating conversation HTML:", error);
+      //     addMessage({
+      //       id: Date.now().toString(),
+      //       content: error.message,
+      //       sender: "System",
+      //       timestamp: null,
+      //     });
+      //   }
+      // }
 
       async function loadCurrentConversation() {
         try {

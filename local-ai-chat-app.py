@@ -3,7 +3,7 @@ from datetime import datetime
 import logging
 from flask import Flask, request, jsonify, send_from_directory
 from llama_cpp import Llama
-from Conversation import Conversation, create_conversation, save_conversation, load_conversation, list_conversations
+from Conversation import Conversation, create_conversation, save_conversation, load_conversation, load_all_conversations
 
 # Dev randomly name conversations with UUID for now
 import uuid
@@ -120,8 +120,16 @@ def models():
 
 @app.route('/conversations', methods=['GET'])
 def get_conversations():
-    conversations = list_conversations(CONVERSATIONS_DIR)
-    return jsonify(conversations)
+    conversations = load_all_conversations(CONVERSATIONS_DIR)
+    return jsonify([
+        {
+            'id': conv.id,
+            'name': conv.name,
+            'timestamp': conv.latest_message_timestamp.isoformat() if conv.latest_message_timestamp else None
+        }
+        for conv in conversations
+    ])
+
 
 @app.route('/conversation/switch', methods=['POST'])
 def switch_conversation():

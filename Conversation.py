@@ -73,7 +73,6 @@ class Tree:
             node = node.children[0]
         return node
 
-
 # Conversation class encapsulates the entire conversation structure
 class Conversation:
     def __init__(self, name: str):
@@ -129,20 +128,13 @@ class Conversation:
     def get_html_content(self) -> str:
         return self.html_content
 
-# Utility function to list the names sand IDs of all saved conversations in a directory
-def list_conversations(directory: str) -> Dict[str, str]:
-    conversations = {}
+def load_all_conversations(directory: str) -> List[Conversation]:
+    conversations = []
     for f in os.listdir(directory):
         if f.endswith('.pickle'):
             conv = load_conversation(f[:-7], directory)
-            try:
-                name = conv.name
-            except AttributeError:
-                name = conv.id
-                logging.warning(f"Conversation {conv.id} does not have a name attribute, using ID as name.")
-            conversations[conv.id] = name
-    # returns a ids as keys and names as values
-    return conversations
+            conversations.append(conv)
+    return sorted(conversations, key=lambda x: x.latest_message_timestamp or datetime.min, reverse=True)
 
 # Create a new conversation with a given name
 def create_conversation(name: str = "Unnamed Conversation") -> Conversation:
