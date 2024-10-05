@@ -866,6 +866,20 @@
         }
       }
 
+      function clearMessagesBelow(nodeId) {
+        const messageContainer = document.querySelector(
+          `[data-node-id="${nodeId}"]`
+        );
+        if (messageContainer) {
+          let nextElement = messageContainer.nextElementSibling;
+          while (nextElement) {
+            const currentElement = nextElement;
+            nextElement = currentElement.nextElementSibling;
+            currentElement.remove();
+          }
+        }
+      }
+
       async function navigateBranch(messageContainer, direction) {
         try {
           const response = await fetch("/switch_branch", {
