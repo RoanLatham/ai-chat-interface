@@ -552,6 +552,11 @@
         min-width: 200px;
         color: inherit;
       }
+
+      .disabled {
+        opacity: 0.6;
+        pointer-events: none;
+      }
     </style>
   </head>
   <body>
@@ -937,6 +942,11 @@
           )
           .forEach((el) => {
             el.disabled = waiting;
+            if (waiting) {
+              el.classList.add("disabled");
+            } else {
+              el.classList.remove("disabled");
+            }
           });
       }
 
