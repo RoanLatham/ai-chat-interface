@@ -1035,19 +1035,6 @@
         }
       });
 
-      // userInput.addEventListener("keydown", (e) => {
-      //   if (e.key === "Enter") {
-      //     if (e.shiftKey) {
-      //       // Allow new line when Shift+Enter is pressed
-      //       return;
-      //     } else {
-      //       // Send message when only Enter is pressed
-      //       e.preventDefault();
-      //       sendMessage();
-      //     }
-      //   }
-      // });
-
       async function loadModels() {
         try {
           const response = await fetch("/models");
