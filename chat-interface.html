@@ -788,7 +788,6 @@
 
       async function editMessage(messageContainer) {
         if (isWaitingForResponse) return;
-        setWaitingState(true);
 
         const messageElement = messageContainer.querySelector(".message");
         const nodeId = messageContainer.dataset.nodeId;
@@ -829,6 +828,8 @@
             });
 
             submitButton.addEventListener("click", async () => {
+              setWaitingState(isHumanMessage);
+
               const newContent = textarea.value;
               try {
                 const editResponse = await fetch("/edit_message", {
