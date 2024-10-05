@@ -201,8 +201,8 @@ def generate_ai_response(conversation: Conversation):
     
     return ai_response, ai_node
 
-@app.route('/chat', methods=['POST'])
-def chat():
+@app.route('/add_user_message', methods=['POST'])
+def add_user_message():
     global current_system_prompt, current_model, current_conversation, current_model_name
     data = request.json
     user_input = data['message']
@@ -218,21 +218,38 @@ def chat():
         naming_response = current_model(naming_prompt, max_tokens=10, stop=["\n"], temperature=0.7)
         conversation_name = naming_response['choices'][0]['text'].strip()
         current_conversation = create_conversation(conversation_name)
-        logging.info("new conversation created with id: ", current_conversation.id)
     
     new_node = current_conversation.add_message(user_input, "Human")
+    save_conversation(current_conversation, CONVERSATIONS_DIR)
+    
+    return jsonify({
+        'conversation_id': current_conversation.id,
+        'conversation_name': current_conversation.name,
+        'human_node_id': new_node.id,
+        'timestamp': new_node.timestamp.isoformat()
+    })
+
+@app.route('/get_ai_response', methods=['POST'])
+def get_ai_response():
+    global current_conversation, current_model_name
+    data = request.json
+    conversation_id = data['conversation_id']
+    
+    if current_conversation is None or current_conversation.id != conversation_id:
+        current_conversation = load_conversation(conversation_id, CONVERSATIONS_DIR)
     
     ai_response, ai_node = generate_ai_response(current_conversation)
+    save_conversation(current_conversation, CONVERSATIONS_DIR)
     
     return jsonify({
         'response': ai_response,
         'conversation_id': current_conversation.id,
         'conversation_name': current_conversation.name,
         'model_name': current_model_name,
-        'human_node_id': new_node.id,
         'ai_node_id': ai_node.id,
         'timestamp': ai_node.timestamp.isoformat()
     })
+
 
 @app.route('/edit_message', methods=['POST'])
 def edit_message():
