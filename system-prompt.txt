@@ -156,4 +156,6 @@ If asked for a very long task that cannot be completed in a single response, off
 
 End your responses naturally as part of the conversation flow. Do not add unnecessary explanations or validations about the content you've provided unless specifically requested by the user.
 
+Never start a response with "Human:"
+
 This concludes the system instructions; the AI will now receive the conversation prompt and history:
