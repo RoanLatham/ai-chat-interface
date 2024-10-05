@@ -7,7 +7,7 @@ import logging
 
 # Node class represents a single message in the conversation
 class Node:
-    def __init__(self, content: str, sender: str, timestamp: datetime, model_name: Optional[str] = None):
+    def __init__(self, content: str, sender: str, timestamp: datetime, model_name: Optional[str] = None, internal_monologue: Optional[str] = None):
         self.id = str(uuid.uuid4())
         self.content = content
         self.sender = sender
@@ -15,6 +15,7 @@ class Node:
         self.children: List[Node] = []
         self.parent: Optional[Node] = None
         self.model_name: Optional[str] = model_name
+        self.internal_monologue = internal_monologue
 
 # Tree class manages the branching structure of the conversation
 class Tree:
@@ -22,8 +23,8 @@ class Tree:
         self.root = self.current_node = Node("", "Root", datetime.now()) # Empty root node, first message in brach is always child of root, to allow for multiple branches including the first message in a conversation 
 
     # Add a new message to the conversation
-    def add_node(self, content: str, sender: str, model_name: Optional[str] = None) -> Node:
-        new_node = Node(content, sender, datetime.now(), model_name)
+    def add_node(self, content: str, sender: str, model_name: Optional[str] = None, internal_monologue: Optional[str] = None) -> Node:
+        new_node = Node(content, sender, datetime.now(), model_name, internal_monologue)
         new_node.parent = self.current_node
         self.current_node.children.append(new_node)
         self.current_node = new_node
@@ -33,7 +34,7 @@ class Tree:
     def edit_node(self, node_id: str, new_content: str) -> Optional[Node]:
         node = self.find_node(node_id)
         if node and node != self.root:
-            new_node = Node(new_content, node.sender, datetime.now(), node.model_name)
+            new_node = Node(new_content, node.sender, datetime.now(), node.model_name, node.internal_monologue)
             new_node.parent = node.parent
             node.parent.children.append(new_node)
             self.current_node = new_node
@@ -83,8 +84,8 @@ class Conversation:
         self.latest_message_timestamp: Optional[datetime] = None
 
     # Add a new message to the conversation
-    def add_message(self, content: str, sender: str, model_name: Optional[str] = None) -> Node:
-        new_node = self.tree.add_node(content, sender, model_name)
+    def add_message(self, content: str, sender: str, model_name: Optional[str] = None, internal_monologue: Optional[str] = None) -> Node:
+        new_node = self.tree.add_node(content, sender, model_name, internal_monologue)
         self.latest_message_timestamp = new_node.timestamp
         return new_node
 
