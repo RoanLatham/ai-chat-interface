@@ -780,6 +780,9 @@
       }
 
       async function editMessage(messageContainer) {
+        if (isWaitingForResponse) return;
+        setWaitingState(true);
+
         const messageElement = messageContainer.querySelector(".message");
         const nodeId = messageContainer.dataset.nodeId;
         const isHumanMessage = messageContainer.classList.contains(
@@ -848,7 +851,6 @@
                       }),
                     });
                     const aiData = await aiResponse.json();
-                    removeTypingIndicator();
                     addMessage({
                       id: aiData.ai_node_id,
                       content: aiData.response,
@@ -869,6 +871,9 @@
                   sender: "System",
                   timestamp: null,
                 });
+              } finally {
+                removeTypingIndicator();
+                setWaitingState(false);
               }
             });
 
@@ -922,9 +927,24 @@
         }
       }
 
+      let isWaitingForResponse = false;
+
+      function setWaitingState(waiting) {
+        isWaitingForResponse = waiting;
+        document
+          .querySelectorAll(
+            ".conversation-item, .edit-icon, .nav-arrow, #send-button, #new-chat-button"
+          )
+          .forEach((el) => {
+            el.disabled = waiting;
+          });
+      }
+
       async function sendMessage() {
+        if (isWaitingForResponse) return;
         const message = userInput.value.trim();
         if (message) {
+          setWaitingState(true);
           userInput.value = "";
 
           try {
@@ -986,6 +1006,9 @@
               sender: "System",
               timestamp: new Date().toISOString(),
             });
+          } finally {
+            removeTypingIndicator();
+            setWaitingState(false);
           }
         }
       }
@@ -1029,7 +1052,7 @@
       sendButton.addEventListener("click", sendMessage);
 
       userInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
+        if (e.key === "Enter" && !e.shiftKey && !isWaitingForResponse) {
           e.preventDefault();
           sendMessage();
         }
