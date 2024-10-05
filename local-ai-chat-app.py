@@ -38,7 +38,7 @@ CONVERSATION_HISTORY_START = """End of conversation-specific instructions.
 
 The conversation history begins below. Focus on the latest human response and continue the conversation accordingly:"""
 
-STOP_PHRASES = ["Human:", "End of example interactions."]
+STOP_PHRASES = ["Human:", "End of example interactions", "Now ending this interaction"]
 
 def load_model(model_name):
     global current_model, current_model_name
