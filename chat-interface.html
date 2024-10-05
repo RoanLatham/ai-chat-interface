@@ -786,6 +786,9 @@
           "human-message-container"
         );
 
+        const originalHeight = messageElement.offsetHeight;
+        const originalWidth = messageElement.offsetWidth;
+
         try {
           const response = await fetch("/get_original_content", {
             method: "POST",
@@ -806,8 +809,8 @@
             `;
 
             const textarea = messageElement.querySelector(".editing");
-            textarea.style.height = "auto";
-            textarea.style.height = textarea.scrollHeight + "px";
+            textarea.style.height = `${originalHeight}px`;
+            textarea.style.width = `${originalWidth}px`;
             const cancelButton = messageElement.querySelector(".cancel-edit");
             const submitButton = messageElement.querySelector(".submit-edit");
 
