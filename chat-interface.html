@@ -583,6 +583,37 @@
         margin: 10px 0;
         animation: fadeInUp 0.3s ease-out;
       }
+
+      /* Scrollbar styles */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--button-color) transparent;
+      }
+
+      *::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      *::-webkit-scrollbar-track {
+        background: transparent;
+        margin: 4px;
+      }
+
+      *::-webkit-scrollbar-thumb {
+        background-color: var(--button-color);
+        border-radius: 4px;
+        border: 2px solid transparent;
+        background-clip: content-box;
+      }
+
+      *::-webkit-scrollbar-thumb:hover {
+        background-color: var(--button-hover-color);
+      }
+
+      *::-webkit-scrollbar-corner {
+        background: transparent;
+      }
     </style>
   </head>
   <body>
