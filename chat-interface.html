@@ -882,22 +882,23 @@
           : new Date().toISOString();
         infoElement.appendChild(createTimestampElement(timestamp));
 
-        if (message.sender === "AI") {
-          infoElement.appendChild(createModelNameElement(message.model_name));
+        if (message.sender != "System") {
+          if (message.sender === "AI") {
+            infoElement.appendChild(createModelNameElement(message.model_name));
+          }
+
+          const iconContainer = document.createElement("div");
+          iconContainer.classList.add("message-icon-container");
+
+          if (message.sender === "AI") {
+            iconContainer.appendChild(createRegenerateIcon(messageContainer));
+          }
+          iconContainer.appendChild(createEditIcon(messageContainer));
+          iconContainer.appendChild(createNavArrow("left", messageContainer));
+          iconContainer.appendChild(createNavArrow("right", messageContainer));
+
+          infoElement.appendChild(iconContainer);
         }
-
-        const iconContainer = document.createElement("div");
-        iconContainer.classList.add("message-icon-container");
-
-        if (message.sender === "AI") {
-          iconContainer.appendChild(createRegenerateIcon(messageContainer));
-        }
-        iconContainer.appendChild(createEditIcon(messageContainer));
-        iconContainer.appendChild(createNavArrow("left", messageContainer));
-        iconContainer.appendChild(createNavArrow("right", messageContainer));
-
-        infoElement.appendChild(iconContainer);
-
         messageContainer.appendChild(messageElement);
         messageContainer.appendChild(infoElement);
 
@@ -1085,22 +1086,40 @@
                   clearMessagesBelow(editData.new_node_id);
 
                   if (isHumanMessage) {
-                    showTypingIndicator();
                     const aiResponse = await fetch("/get_ai_response", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
                         conversation_id: currentConversationId,
+                        model: currentModel,
                       }),
                     });
-                    const aiData = await aiResponse.json();
-                    addMessage({
-                      id: aiData.ai_node_id,
-                      content: aiData.response,
-                      sender: "AI",
-                      timestamp: aiData.timestamp,
-                      model_name: aiData.model_name,
-                    });
+
+                    const reader = aiResponse.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    while (true) {
+                      const { done, value } = await reader.read();
+                      if (done) break;
+                      const chunk = decoder.decode(value);
+                      const data = JSON.parse(chunk);
+
+                      if (data.status === "loading_model") {
+                        showLoadingMessage("Loading AI model...");
+                      } else if (data.status === "generating") {
+                        removeLoadingMessage();
+                        showTypingIndicator();
+                      } else if (data.status === "complete") {
+                        removeTypingIndicator();
+                        addMessage({
+                          id: data.node_id,
+                          content: data.response,
+                          sender: "AI",
+                          timestamp: data.timestamp,
+                          model_name: currentModel,
+                        });
+                      }
+                    }
                   }
                 } else {
                   throw new Error(editData.error || "Failed to edit message");
@@ -1138,28 +1157,41 @@
       async function regenerateResponse(messageContainer) {
         const nodeId = messageContainer.dataset.nodeId;
         messageContainer.innerHTML = "";
-        clearMessagesBelow(nodeId);
-        showTypingIndicator();
 
         try {
           const response = await fetch("/regenerate_response", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ node_id: nodeId }),
+            body: JSON.stringify({
+              node_id: nodeId,
+              model: currentModel,
+            }),
           });
-          const data = await response.json();
 
-          if (data.success) {
-            removeTypingIndicator();
-            addMessage({
-              id: data.new_node_id,
-              content: data.new_content,
-              sender: "AI",
-              timestamp: data.timestamp,
-              model_name: data.model_name,
-            });
-          } else {
-            throw new Error(data.error || "Failed to regenerate response");
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value);
+            const data = JSON.parse(chunk);
+
+            if (data.status === "loading_model") {
+              showLoadingMessage("Loading AI model...");
+            } else if (data.status === "generating") {
+              removeLoadingMessage();
+              showTypingIndicator();
+            } else if (data.status === "complete") {
+              removeTypingIndicator();
+              addMessage({
+                id: data.node_id,
+                content: data.response,
+                sender: "AI",
+                timestamp: data.timestamp,
+                model_name: currentModel,
+              });
+            }
           }
         } catch (error) {
           console.error("Error regenerating response:", error);
@@ -1269,34 +1301,45 @@
                   sender: "Human",
                   timestamp: humanData.timestamp,
                 });
+                currentConversationId = humanData.conversation_id;
+                loadConversations();
                 moveConversationToTop(currentConversationId);
-                showTypingIndicator();
               }
             }
 
-            // Second request: Get AI response
             const aiResponse = await fetch("/get_ai_response", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 conversation_id: humanData.conversation_id,
+                model: currentModel,
               }),
             });
-            const aiData = await aiResponse.json();
 
-            removeTypingIndicator();
-            addMessage({
-              id: aiData.ai_node_id,
-              content: aiData.response,
-              sender: "AI",
-              timestamp: aiData.timestamp,
-              model_name: aiData.model_name,
-            });
+            const aireader = aiResponse.body.getReader();
+            const aidecoder = new TextDecoder();
 
-            if (aiData.conversation_id !== currentConversationId) {
-              currentConversationId = aiData.conversation_id;
-              await loadConversations();
-              highlightActiveConversation();
+            while (true) {
+              const { done, value } = await aireader.read();
+              if (done) break;
+              const chunk = aidecoder.decode(value);
+              const aidata = JSON.parse(chunk);
+
+              if (aidata.status === "loading_model") {
+                showLoadingMessage("Loading AI model...");
+              } else if (aidata.status === "generating") {
+                removeLoadingMessage();
+                showTypingIndicator();
+              } else if (aidata.status === "complete") {
+                removeTypingIndicator();
+                addMessage({
+                  id: aidata.node_id,
+                  content: aidata.response,
+                  sender: "AI",
+                  timestamp: aidata.timestamp,
+                  model_name: currentModel,
+                });
+              }
             }
           } catch (error) {
             console.error("Error:", error);

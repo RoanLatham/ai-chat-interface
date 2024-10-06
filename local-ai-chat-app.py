@@ -200,26 +200,35 @@ def switch_branch():
     return jsonify({'success': False, 'error': 'No active conversation'}), 400
 
 
-def generate_ai_response(conversation: Conversation):
-    conversation_history = "\n".join([f"{node.sender}: {node.content}\nAI Internal Thought Process: {node.internal_monologue}" for node in conversation.get_current_branch()])
+def generate_ai_response(conversation: Conversation, model_name: str):
+    global current_model, current_model_name
+
+    if current_model is None or current_model_name != model_name:
+        yield json.dumps({"status": "loading_model"})
+        current_model = load_model(model_name)
+        current_model_name = model_name
+
     # TODO limit conversation history to X amount of tokens
-    print(f"conversation_history: \n\n{conversation_history}")
+    conversation_history = "\n".join([f"{node.sender}: {node.content}\nAI Internal Thought Process: {node.internal_monologue}" for node in conversation.get_current_branch()])
     full_prompt = f"{SUPER_SYSTEM_PROMPT}\n\n{CONVERSATION_INSTRUCTIONS_START}\n{current_system_prompt}\n\n{CONVERSATION_HISTORY_START}\n{conversation_history}\nAI Internal Thought Process:"
     
+    yield json.dumps({"status": "generating"})
     response = current_model(full_prompt, max_tokens=10000, stop=STOP_PHRASES, temperature=0.7, top_p=0.9, top_k=40, repeat_penalty=1.1, presence_penalty=0.1, frequency_penalty=0.01, mirostat_mode=2, mirostat_tau=5.0, mirostat_eta=0.1, echo=True)
     ai_full_response = response['choices'][0]['text'].split("AI Internal Thought Process:")[-1].strip()
     
-    # Split the response into internal monologue and actual response
     parts = ai_full_response.split("AI:", 1)
     internal_monologue = parts[0].strip() if len(parts) > 1 else ""
     ai_response = parts[1].strip() if len(parts) > 1 else ai_full_response.strip()
     
     ai_node = conversation.add_message(ai_response, "AI", current_model_name, internal_monologue)
-
-    print(f"full AI Response: {internal_monologue + ai_response}")
     save_conversation(conversation, CONVERSATIONS_DIR)
     
-    return ai_response, ai_node
+    yield json.dumps({
+        "status": "complete",
+        "response": ai_response,
+        "node_id": ai_node.id,
+        "timestamp": ai_node.timestamp.isoformat()
+    })
 
 @app.route('/add_user_message', methods=['POST'])
 def add_user_message():
@@ -263,25 +272,29 @@ def add_user_message():
 
 @app.route('/get_ai_response', methods=['POST'])
 def get_ai_response():
-    global current_conversation, current_model_name
+    global current_conversation
     data = request.json
     conversation_id = data['conversation_id']
+    model_name = data['model']
     
     if current_conversation.id != conversation_id:
         current_conversation = load_conversation(conversation_id, CONVERSATIONS_DIR)
     
-    ai_response, ai_node = generate_ai_response(current_conversation)
-    save_conversation(current_conversation, CONVERSATIONS_DIR)
-    
-    return jsonify({
-        'response': ai_response,
-        'conversation_id': current_conversation.id,
-        'conversation_name': current_conversation.name,
-        'model_name': current_model_name,
-        'ai_node_id': ai_node.id,
-        'timestamp': ai_node.timestamp.isoformat()
-    })
+    return Response(generate_ai_response(current_conversation, model_name), mimetype='application/json')
 
+@app.route('/regenerate_response', methods=['POST'])
+def regenerate_response():
+    data = request.json
+    node_id = data['node_id']
+    model_name = data['model']
+    
+    if current_conversation:
+        node_to_regenerate = current_conversation.find_node(node_id)
+        if node_to_regenerate and node_to_regenerate.parent:
+            current_conversation.tree.current_node = node_to_regenerate.parent
+            return Response(generate_ai_response(current_conversation, model_name), mimetype='application/json')
+    
+    return jsonify({'success': False, 'error': 'Failed to regenerate response'}), 400
 
 @app.route('/edit_message', methods=['POST'])
 def edit_message():
@@ -302,33 +315,6 @@ def edit_message():
             })
     
     return jsonify({'success': False, 'error': 'Failed to edit message'}), 400
-
-@app.route('/regenerate_response', methods=['POST'])
-def regenerate_response():
-    data = request.json
-    node_id = data['node_id']
-    
-    if current_conversation:
-        # Find the node to regenerate
-        node_to_regenerate = current_conversation.find_node(node_id)
-        if node_to_regenerate and node_to_regenerate.parent:
-            # Set the current node to the parent (human's message)
-            current_conversation.tree.current_node = node_to_regenerate.parent
-            
-            # Generate a new AI response
-            new_response, new_node = generate_ai_response(current_conversation)
-            
-            if new_node:
-                save_conversation(current_conversation, CONVERSATIONS_DIR)
-                return jsonify({
-                    'success': True,
-                    'new_node_id': new_node.id,
-                    'new_content': new_response,
-                    'timestamp': new_node.timestamp.isoformat(),
-                    'model_name': current_model_name
-                })
-    
-    return jsonify({'success': False, 'error': 'Failed to regenerate response'}), 400
 
 @app.route('/get_original_content', methods=['POST'])
 def get_original_content():
