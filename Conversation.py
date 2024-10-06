@@ -128,6 +128,9 @@ class Conversation:
 
     def get_html_content(self) -> str:
         return self.html_content
+    
+    def set_name(self, new_name: str):
+        self.name = new_name
 
 def load_all_conversations(directory: str) -> List[Conversation]:
     conversations = []

@@ -31,11 +31,10 @@
         --accent-color: #fd79a8;
         --chat-bg: #2d3436;
         --max-width: 70vw;
-        --button-color: #a0a0a0;
-        --button-hover-color: #b8b8b8;
+        --button-color: #4d5b5f;
+        --button-hover-color: #72858a;
         --conversation-bg: #3e4a4c;
-        --delete-button-bg: #4d5b5f;
-        --delete-button-hover: #e74c3c;
+        --conversation-delete-button-hover: #e74c3c;
         --subtle-text-color: #888888;
       }
 
@@ -436,7 +435,7 @@
         transition: background-color 0.3s ease;
       }
 
-      .conversation-item span {
+      .conversation-name {
         flex-grow: 1;
         overflow: hidden;
         display: -webkit-box;
@@ -451,6 +450,16 @@
         max-width: 70%;
       }
 
+      .conversation-buttons {
+        display: flex;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .conversation-item:hover .conversation-buttons {
+        opacity: 1;
+      }
+
       .conversation-item:hover {
         background-color: var(--primary-color);
       }
@@ -459,27 +468,43 @@
         background-color: var(--primary-color);
       }
 
-      .delete-button {
+      .conversation-button {
         display: flex;
         align-items: center;
         justify-content: center;
         width: 40px;
         height: 40px;
-        background-color: var(--delete-button-bg);
+        background-color: var(--button-color);
         border: none;
         border-radius: 20px;
         cursor: pointer;
         transition: background-color 0.3s ease;
+        margin-left: 5px;
+      }
+
+      .conversation-button:hover {
+        background-color: var(--button-hover-color);
       }
 
       .delete-button:hover {
-        background-color: var(--delete-button-hover);
+        background-color: var(--conversation-delete-button-hover);
       }
 
-      .delete-button svg {
+      .conversation-button svg {
         width: 16px;
         height: 16px;
         fill: var(--text-color);
+      }
+
+      .edit-conversation-input {
+        width: 100%;
+        background-color: var(--conversation-bg);
+        color: var(--text-color);
+        border: none;
+        /* font-size: 1em; */
+        resize: none;
+        align-self: center;
+        overflow-y: scroll;
       }
 
       .new-chat-button {
@@ -532,16 +557,7 @@
       .edit-controls button {
         padding: 8px 16px;
         border-radius: 20px;
-        border: none;
         font-size: inherit;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-        background-color: var(--button-color);
-        color: var(--text-color);
-      }
-
-      .edit-controls button :hover {
-        background-color: var(--button-hover-color);
       }
 
       .editing {
@@ -822,8 +838,8 @@
             messageElement.innerHTML = `
                 <textarea class="editing">${originalContent}</textarea>
                 <div class="edit-controls">
-                    <button class="cancel-edit">Cancel</button>
-                    <button class="submit-edit">Submit</button>
+                    <button class="button cancel-edit">Cancel</button>
+                    <button class="button submit-edit">Submit</button>
                 </div>
             `;
 
@@ -1261,21 +1277,92 @@
         item.dataset.conversationId = conv.id;
 
         const text = document.createElement("span");
+        text.classList.add("conversation-name");
         text.textContent = conv.name;
         item.appendChild(text);
 
+        const buttonsContainer = document.createElement("div");
+        buttonsContainer.classList.add("conversation-buttons");
+
+        const editButton = document.createElement("button");
+        editButton.classList.add("conversation-button", "edit-button");
+        editButton.innerHTML =
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+        editButton.addEventListener("click", (e) => {
+          e.stopPropagation();
+          startEditingConversationName(item, text);
+        });
+        buttonsContainer.appendChild(editButton);
+
         const deleteButton = document.createElement("button");
-        deleteButton.classList.add("delete-button");
+        deleteButton.classList.add("conversation-button", "delete-button");
         deleteButton.innerHTML =
-          '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
         deleteButton.addEventListener("click", (e) => {
           e.stopPropagation();
           deleteConversation(conv.id);
         });
-        item.appendChild(deleteButton);
+        buttonsContainer.appendChild(deleteButton);
+
+        item.appendChild(buttonsContainer);
 
         item.addEventListener("click", () => loadConversation(conv.id));
         return item;
+      }
+
+      function startEditingConversationName(item, textElement) {
+        item.removeEventListener("click", item.clickHandler);
+
+        const input = document.createElement("textarea");
+        input.classList.add("conversation-name", "edit-conversation-input");
+        input.value = textElement.textContent;
+        // input.rows = 1;
+        input.style.height = `${textElement.offsetHeight}px`;
+        input.style.width = `${textElement.offsetWidth}px`;
+
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            finishEditingConversationName(item, input, textElement);
+          }
+        });
+
+        input.addEventListener("blur", () => {
+          finishEditingConversationName(item, input, textElement);
+        });
+
+        item.replaceChild(input, textElement);
+        input.focus();
+      }
+
+      async function finishEditingConversationName(item, input, textElement) {
+        const newName = input.value.trim();
+        const oldName = textElement.textContent;
+
+        if (newName !== oldName) {
+          try {
+            const response = await fetch("/rename_conversation", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                conversation_id: item.dataset.conversationId,
+                new_name: newName,
+              }),
+            });
+
+            if (response.ok) {
+              textElement.textContent = newName;
+            } else {
+              console.error("Failed to rename conversation");
+            }
+          } catch (error) {
+            console.error("Error renaming conversation:", error);
+          }
+        }
+
+        item.replaceChild(textElement, input);
+        item.clickHandler = () => loadConversation(item.dataset.conversationId);
+        item.addEventListener("click", item.clickHandler);
       }
 
       document

@@ -129,6 +129,20 @@ def clear_conversation():
     current_conversation = None
     return jsonify({'success': True})
 
+@app.route('/rename_conversation', methods=['POST'])
+def rename_conversation():
+    data = request.json
+    conversation_id = data['conversation_id']
+    new_name = data['new_name']
+    
+    try:
+        conversation = load_conversation(conversation_id, CONVERSATIONS_DIR)
+        conversation.set_name(new_name)
+        save_conversation(conversation, CONVERSATIONS_DIR)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
 @app.route('/current_conversation', methods=['GET'])
 def get_current_conversation():
     if current_conversation:
