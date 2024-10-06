@@ -1791,9 +1791,7 @@
           const response = await fetch("/current_conversation");
           const data = await response.json();
           if (data.conversation_id) {
-            currentConversationId = data.conversation_id;
-            chatContainer.innerHTML = data.html_content;
-            highlightActiveConversation();
+            loadConversation(data.conversation_id);
           }
         } catch (error) {
           console.error("Error loading current conversation:", error);
