@@ -14,9 +14,6 @@ logging.basicConfig(level=logging.INFO,
 
 logger = logging.getLogger(__name__)
 
-# Dev randomly name conversations with UUID for now
-import uuid
-
 app = Flask(__name__)
 
 # Directory containing AI models
