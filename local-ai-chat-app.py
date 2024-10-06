@@ -348,6 +348,23 @@ def get_system_prompt():
 def get_default_system_prompt():
     return jsonify({'default_system_prompt': DEFAULT_SYSTEM_PROMPT})
 
+@app.route('/models_folder_path', methods=['GET'])
+def get_models_folder_path():
+    return jsonify({'path': os.path.abspath(MODELS_DIR)})
+
+@app.route('/open_models_folder', methods=['POST'])
+def open_models_folder():
+    import subprocess
+    try:
+        if os.name == 'nt':  # Windows
+            os.startfile(MODELS_DIR)
+        elif os.name == 'posix':  # macOS and Linux
+            subprocess.call(['open', MODELS_DIR])
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     os.makedirs(MODELS_DIR, exist_ok=True)
     os.makedirs(CONVERSATIONS_DIR, exist_ok=True)

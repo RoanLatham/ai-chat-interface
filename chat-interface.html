@@ -128,7 +128,7 @@
         overflow-x: auto;
         margin: 10px 0;
         font-size: 0.9em;
-        border: 1px solid var(--primary-color);
+        /* border: 1px solid var(--primary-color); */
       }
 
       .message code {
@@ -311,11 +311,12 @@
         width: 100%;
         background-color: var(--bg-color);
         color: var(--text-color);
-        border: 1px solid var(--primary-color);
+        /* border: 1px solid var(--primary-color); */
         border-radius: 5px;
         padding: 10px;
         margin-bottom: 15px;
         font-size: 1rem;
+        border: none;
       }
 
       .button {
@@ -382,10 +383,12 @@
         background-color: var(--chat-bg);
         margin: 15% auto;
         padding: 20px;
-        border: 1px solid var(--primary-color);
+        /* border: 1px solid var(--primary-color); */
         border-radius: 10px;
-        width: 30%;
+        width: 20%;
         max-width: var(--max-width);
+        display: flex;
+        flex-direction: column;
       }
 
       .modal-content h2 {
@@ -584,6 +587,60 @@
         animation: fadeInUp 0.3s ease-out;
       }
 
+      .folder-input,
+      .url-input {
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        gap: 20px;
+      }
+
+      .folder-input button,
+      .url-input button {
+        align-self: flex-end;
+        -webkit-line-clamp: 1;
+        line-clamp: 1;
+        white-space: nowrap;
+      }
+
+      .folder-input span {
+        flex-grow: 1;
+        /* margin-right: 5%; */
+        background-color: var(--chat-bg);
+        color: var(--text-color);
+        padding: 0;
+        display: flex;
+        align-items: center;
+        flex-direction: row;
+        padding-left: 10px;
+        overflow: hidden;
+      }
+
+      #model-url {
+        flex-grow: 1;
+        /* margin-right: 5%; */
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        /* border: 1px solid var(--primary-color); */
+        padding: 10px;
+        font-size: 1rem;
+      }
+
+      #add-model-modal-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 30px;
+        align-self: center;
+        width: 100%;
+      }
+
+      .info-text {
+        font-size: 0.9em;
+        color: var(--subtle-text-color);
+        margin-top: 10px;
+      }
+
       /* Scrollbar styles */
       * {
         scrollbar-width: thin;
@@ -619,6 +676,7 @@
   <body>
     <header>
       <h1>AI Chat Interface</h1>
+      <button id="add-model-button" class="button">Add Model</button>
       <select id="model-select"></select>
       <button id="system-prompt-button" class="button">
         Edit System Prompt
@@ -634,6 +692,37 @@
             </button>
             <button id="save-system-prompt" class="button">Save</button>
             <button id="close-modal" class="button">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="add-model-modal" class="modal">
+        <div class="modal-content">
+          <div id="add-model-modal-content">
+            <h2>Add New AI Model</h2>
+            <div class="folder-input">
+              <span id="models-folder"></span>
+              <button id="open-folder-button" class="button">
+                Open Folder
+              </button>
+            </div>
+            <div class="url-input">
+              <input
+                class="button"
+                type="text"
+                id="model-url"
+                placeholder="https://huggingface.co/..."
+              />
+              <button id="download-model-button" class="button">
+                Download
+              </button>
+            </div>
+            <p class="info-text">
+              Please ensure you use only .gguf file format for compatibility.
+            </p>
+            <div class="modal-buttons">
+              <button id="close-add-model-modal" class="button">Close</button>
+            </div>
           </div>
         </div>
       </div>
@@ -797,7 +886,11 @@
           }
         );
 
-        return formattedContent;
+        const wrappedContent = `<p>${formattedContent.replace(
+          /\n/g,
+          "<br>"
+        )}</p>`;
+        return wrappedContent;
       }
 
       function addMessage(message) {
@@ -1527,6 +1620,77 @@
           });
         }
       }
+
+      // Model Modal (try to say that fast 5 times)
+      const addModelButton = document.getElementById("add-model-button");
+      const addModelModal = document.getElementById("add-model-modal");
+      const closeAddModelModal = document.getElementById(
+        "close-add-model-modal"
+      );
+      const modelsFolderInput = document.getElementById("models-folder");
+      const openFolderButton = document.getElementById("open-folder-button");
+      const modelUrlInput = document.getElementById("model-url");
+      const downloadModelButton = document.getElementById(
+        "download-model-button"
+      );
+
+      addModelButton.addEventListener("click", () => {
+        addModelModal.style.display = "block";
+        loadModelsFolderPath();
+      });
+
+      closeAddModelModal.addEventListener("click", () => {
+        addModelModal.style.display = "none";
+      });
+
+      async function loadModelsFolderPath() {
+        try {
+          const response = await fetch("/models_folder_path");
+          const data = await response.json();
+          document.getElementById("models-folder").textContent = data.path;
+        } catch (error) {
+          console.error("Error loading models folder path:", error);
+        }
+      }
+
+      openFolderButton.addEventListener("click", async () => {
+        try {
+          await fetch("/open_models_folder", { method: "POST" });
+        } catch (error) {
+          console.error("Error opening models folder:", error);
+        }
+      });
+
+      downloadModelButton.addEventListener("click", async () => {
+        const url = modelUrlInput.value.trim();
+        if (!url) {
+          alert("Please enter a valid URL");
+          return;
+        }
+        if (!url.endsWith(".gguf")) {
+          alert("Please use only .gguf file format");
+          return;
+        }
+
+        try {
+          const response = await fetch("/download_model", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: url }),
+          });
+          const data = await response.json();
+          if (data.success) {
+            alert("Model downloaded successfully");
+            modelUrlInput.value = "";
+            loadModels(); // Refresh the model list
+          } else {
+            alert("Error downloading model: " + data.error);
+          }
+        } catch (error) {
+          console.error("Error downloading model:", error);
+          alert("Error downloading model.");
+        }
+      });
 
       // Initialize the chat interface
       loadModels();
