@@ -1764,28 +1764,6 @@
         });
       }
 
-      // async function updateConversationHtml() {
-      //   try {
-      //     await fetch("/update_conversation_html", {
-      //       method: "POST",
-      //       headers: {
-      //         "Content-Type": "application/json",
-      //       },
-      //       body: JSON.stringify({
-      //         html_content: chatContainer.innerHTML,
-      //       }),
-      //     });
-      //   } catch (error) {
-      //     console.error("Error updating conversation HTML:", error);
-      //     addMessage({
-      //       id: Date.now().toString(),
-      //       content: error.message,
-      //       sender: "System",
-      //       timestamp: null,
-      //     });
-      //   }
-      // }
-
       async function loadCurrentConversation() {
         try {
           const response = await fetch("/current_conversation");
