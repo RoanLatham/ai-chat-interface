@@ -1,9 +1,10 @@
 import os
 from datetime import datetime
 import logging
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, Response, request, jsonify, send_from_directory
 from llama_cpp import Llama
 from Conversation import Conversation, create_conversation, save_conversation, load_conversation, load_all_conversations
+import json
 
 # Dev randomly name conversations with UUID for now
 import uuid
@@ -214,24 +215,36 @@ def add_user_message():
     if 'system_prompt' in data:
         current_system_prompt = data['system_prompt']
     
-    if current_model is None or current_model_name != model_name:
-        current_model = load_model(model_name)
+    def generate(user_input, model_name):
+        global current_model, current_conversation, current_model_name
+        
+        if current_model is None or current_model_name != model_name:
+            yield json.dumps({"status": "loading_model"})
+            print(f"Loading model: {model_name}")
+            current_model = load_model(model_name)
+            current_model_name = model_name
+        
+        if current_conversation is None:
+            yield json.dumps({"status": "creating_conversation"})
+            print("Creating new conversation")
+            naming_prompt = f"{NAMING_PROMPT}\n\nUser's message: {user_input}\n\nTitle:"
+            naming_response = current_model(naming_prompt, max_tokens=10, stop=["\n"], temperature=0.7)
+            conversation_name = naming_response['choices'][0]['text'].strip()
+            current_conversation = create_conversation(conversation_name)
+            
+        
+        new_node = current_conversation.add_message(user_input, "Human")
+        save_conversation(current_conversation, CONVERSATIONS_DIR)
+        
+        yield json.dumps({
+            "status": "complete",
+            "conversation_id": current_conversation.id,
+            "conversation_name": current_conversation.name,
+            "human_node_id": new_node.id,
+            "timestamp": new_node.timestamp.isoformat()
+        })
     
-    if current_conversation is None:
-        naming_prompt = f"{NAMING_PROMPT}\n\nUser's message: {user_input}\n\nTitle:"
-        naming_response = current_model(naming_prompt, max_tokens=10, stop=["\n"], temperature=0.7)
-        conversation_name = naming_response['choices'][0]['text'].strip()
-        current_conversation = create_conversation(conversation_name)
-    
-    new_node = current_conversation.add_message(user_input, "Human")
-    save_conversation(current_conversation, CONVERSATIONS_DIR)
-    
-    return jsonify({
-        'conversation_id': current_conversation.id,
-        'conversation_name': current_conversation.name,
-        'human_node_id': new_node.id,
-        'timestamp': new_node.timestamp.isoformat()
-    })
+    return Response(generate(user_input, model_name), mimetype='application/json')
 
 @app.route('/get_ai_response', methods=['POST'])
 def get_ai_response():
@@ -239,7 +252,7 @@ def get_ai_response():
     data = request.json
     conversation_id = data['conversation_id']
     
-    if current_conversation is None or current_conversation.id != conversation_id:
+    if current_conversation.id != conversation_id:
         current_conversation = load_conversation(conversation_id, CONVERSATIONS_DIR)
     
     ai_response, ai_node = generate_ai_response(current_conversation)

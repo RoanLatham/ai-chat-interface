@@ -557,6 +557,16 @@
         opacity: 0.6;
         pointer-events: none;
       }
+
+      .loading-message {
+        align-self: center;
+        background-color: var(--conversation-bg);
+        color: var(--text-color);
+        padding: 10px 15px;
+        border-radius: 20px;
+        margin: 10px 0;
+        animation: fadeInUp 0.3s ease-out;
+      }
     </style>
   </head>
   <body>
@@ -961,6 +971,7 @@
           userInput.value = "";
 
           try {
+            console.log(currentModel);
             // First request: Add user message to conversation
             const userResponse = await fetch("/add_user_message", {
               method: "POST",
@@ -971,30 +982,44 @@
                 system_prompt: currentSystemPrompt,
               }),
             });
-            const userData = await userResponse.json();
 
-            // Add user message to the chat interface
-            addMessage({
-              id: userData.human_node_id,
-              content: message,
-              sender: "Human",
-              timestamp: userData.timestamp,
-            });
+            const reader = userResponse.body.getReader();
+            const decoder = new TextDecoder();
 
-            // Show typing indicator for AI response
-            showTypingIndicator();
+            var humanData = "";
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              const chunk = decoder.decode(value);
+              humanData = JSON.parse(chunk);
+
+              if (humanData.status === "creating_conversation") {
+                showLoadingMessage("Creating new conversation...");
+              } else if (humanData.status === "loading_model") {
+                showLoadingMessage("Loading AI model...");
+              } else if (humanData.status === "complete") {
+                removeLoadingMessage();
+                addMessage({
+                  id: humanData.human_node_id,
+                  content: message,
+                  sender: "Human",
+                  timestamp: humanData.timestamp,
+                });
+                moveConversationToTop(currentConversationId);
+                showTypingIndicator();
+              }
+            }
 
             // Second request: Get AI response
             const aiResponse = await fetch("/get_ai_response", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                conversation_id: userData.conversation_id,
+                conversation_id: humanData.conversation_id,
               }),
             });
             const aiData = await aiResponse.json();
 
-            // Remove typing indicator and add AI message
             removeTypingIndicator();
             addMessage({
               id: aiData.ai_node_id,
@@ -1009,7 +1034,6 @@
               await loadConversations();
               highlightActiveConversation();
             }
-            moveConversationToTop(currentConversationId);
           } catch (error) {
             console.error("Error:", error);
             removeTypingIndicator();
@@ -1023,6 +1047,22 @@
             removeTypingIndicator();
             setWaitingState(false);
           }
+        }
+      }
+
+      function showLoadingMessage(message) {
+        removeLoadingMessage();
+        const loadingElement = document.createElement("div");
+        loadingElement.className = "loading-message";
+        loadingElement.textContent = message;
+        chatContainer.appendChild(loadingElement);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      function removeLoadingMessage() {
+        const loadingElement = chatContainer.querySelector(".loading-message");
+        if (loadingElement) {
+          loadingElement.remove();
         }
       }
 
@@ -1093,7 +1133,7 @@
             .map((model) => `<option value="${model}">${model}</option>`)
             .join("");
           if (data.current_model && data.current_model !== "None") {
-          selectModel(data.current_model);
+            selectModel(data.current_model);
           } else if (data.models.length > 0) {
             selectModel(data.models[0]);
           }
