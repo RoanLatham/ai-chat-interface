@@ -1694,6 +1694,9 @@
           conversations.forEach((conv) => {
             conversationList.appendChild(createConversationItem(conv));
           });
+
+          // disable conversion envies if necessary
+          setWaitingState(isWaitingForResponse);
         } catch (error) {
           console.error("Error loading conversations:", error);
           addMessage({
