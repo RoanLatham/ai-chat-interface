@@ -158,6 +158,7 @@
         color: var(--subtle-text-color);
         margin-top: 5px;
         animation: fadeInUp 0.1s ease-out;
+        display: flex;
       }
 
       .ai-info {
@@ -194,6 +195,11 @@
         }
       }
 
+      .message-icon-container {
+        display: flex;
+        align-items: flex-end;
+      }
+
       .human-message {
         align-self: flex-end;
         background-color: var(--primary-color);
@@ -222,12 +228,6 @@
         background-color: var(--accent-color);
         color: var(--bg-color);
         font-style: italic;
-      }
-
-      .message-info {
-        font-size: 0.8em;
-        color: var(--subtle-text-color);
-        margin-top: 5px;
       }
 
       .typing-dots {
@@ -537,17 +537,47 @@
         fill: var(--text-color);
       }
 
-      .edit-icon,
+      /* .edit-icon,
       .nav-arrow {
         cursor: pointer;
         margin-left: 5px;
-        opacity: 0.7;
         transition: opacity 0.3s ease;
       }
 
       .edit-icon:hover,
       .nav-arrow:hover {
         opacity: 1;
+      }
+
+      .regenerate-icon {
+        cursor: pointer;
+        margin-left: 5px;
+        transition: opacity 0.3s ease;
+      }
+
+      .regenerate-icon:hover {
+        opacity: 1;
+      } */
+
+      .message-icon {
+        cursor: pointer;
+        margin-left: 5px;
+        transition: opacity 0.3s ease;
+        color: var(--subtle-text-color);
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .message-icon:hover {
+        opacity: 1;
+        color: var(--text-color);
+      }
+
+      .message-icon svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
       }
 
       .hidden {
@@ -856,11 +886,17 @@
           infoElement.appendChild(createModelNameElement(message.model_name));
         }
 
-        if (message.sender === "Human" || message.sender === "AI") {
-          infoElement.appendChild(createEditIcon(messageContainer));
-          infoElement.appendChild(createNavArrow("left", messageContainer));
-          infoElement.appendChild(createNavArrow("right", messageContainer));
+        const iconContainer = document.createElement("div");
+        iconContainer.classList.add("message-icon-container");
+
+        if (message.sender === "AI") {
+          iconContainer.appendChild(createRegenerateIcon(messageContainer));
         }
+        iconContainer.appendChild(createEditIcon(messageContainer));
+        iconContainer.appendChild(createNavArrow("left", messageContainer));
+        iconContainer.appendChild(createNavArrow("right", messageContainer));
+
+        infoElement.appendChild(iconContainer);
 
         messageContainer.appendChild(messageElement);
         messageContainer.appendChild(infoElement);
@@ -885,23 +921,39 @@
 
       function createEditIcon(messageContainer) {
         const editIcon = document.createElement("span");
-        editIcon.classList.add("edit-icon");
+        editIcon.classList.add("message-icon", "edit-icon");
         editIcon.title = "Edit message";
-        editIcon.textContent = "✎";
+        editIcon.innerHTML =
+          '<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
         editIcon.addEventListener("click", () => editMessage(messageContainer));
         return editIcon;
       }
 
       function createNavArrow(direction, messageContainer) {
         const arrow = document.createElement("span");
-        arrow.classList.add("nav-arrow", `${direction}-arrow`, "hidden");
+        arrow.classList.add("message-icon", "nav-arrow", `${direction}-arrow`);
         arrow.title =
           direction === "left" ? "Previous version" : "Next version";
-        arrow.textContent = direction === "left" ? "◀" : "▶";
+        arrow.innerHTML =
+          direction === "left"
+            ? '<svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>'
+            : '<svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z"/></svg>';
         arrow.addEventListener("click", () =>
           navigateBranch(messageContainer, direction)
         );
         return arrow;
+      }
+
+      function createRegenerateIcon(messageContainer) {
+        const regenerateIcon = document.createElement("span");
+        regenerateIcon.classList.add("message-icon", "regenerate-icon");
+        regenerateIcon.title = "Regenerate response";
+        regenerateIcon.innerHTML =
+          '<svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>';
+        regenerateIcon.addEventListener("click", () =>
+          regenerateResponse(messageContainer)
+        );
+        return regenerateIcon;
       }
 
       function formatMessage(content) {
@@ -1077,6 +1129,44 @@
           addMessage({
             id: Date.now().toString(),
             content: "Error preparing message for editing: " + error.message,
+            sender: "System",
+            timestamp: null,
+          });
+        }
+      }
+
+      async function regenerateResponse(messageContainer) {
+        const nodeId = messageContainer.dataset.nodeId;
+        messageContainer.innerHTML = "";
+        clearMessagesBelow(nodeId);
+        showTypingIndicator();
+
+        try {
+          const response = await fetch("/regenerate_response", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ node_id: nodeId }),
+          });
+          const data = await response.json();
+
+          if (data.success) {
+            removeTypingIndicator();
+            addMessage({
+              id: data.new_node_id,
+              content: data.new_content,
+              sender: "AI",
+              timestamp: data.timestamp,
+              model_name: data.model_name,
+            });
+          } else {
+            throw new Error(data.error || "Failed to regenerate response");
+          }
+        } catch (error) {
+          console.error("Error regenerating response:", error);
+          removeTypingIndicator();
+          addMessage({
+            id: Date.now().toString(),
+            content: "Error regenerating response: " + error.message,
             sender: "System",
             timestamp: null,
           });
