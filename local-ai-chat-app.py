@@ -6,6 +6,14 @@ from llama_cpp import Llama
 from Conversation import Conversation, create_conversation, save_conversation, load_conversation, load_all_conversations
 import json
 
+# Configure logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    filename='app.log',
+                    filemode='a')
+
+logger = logging.getLogger(__name__)
+
 # Dev randomly name conversations with UUID for now
 import uuid
 
