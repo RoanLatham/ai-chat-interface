@@ -1309,10 +1309,6 @@
                   timestamp: humanData.timestamp,
                 });
                 currentConversationId = humanData.conversation_id;
-                console.error(
-                  "Human response Conversation ID:",
-                  humanData.conversation_id
-                );
                 loadConversations();
               }
             }
@@ -1342,10 +1338,6 @@
                 showTypingIndicator();
               } else if (aiData.status === "complete") {
                 removeTypingIndicator();
-                console.error(
-                  "AI response Conversation ID:",
-                  aiData.conversation_id
-                );
                 addMessage({
                   id: aiData.node_id,
                   content: aiData.response,
