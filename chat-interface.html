@@ -1063,6 +1063,13 @@
               messageElement.innerHTML = formatMessage(originalContent);
             });
 
+            textarea.addEventListener("keydown", (e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                submitButton.click();
+              }
+            });
+
             submitButton.addEventListener("click", async () => {
               setWaitingState(isHumanMessage);
 
