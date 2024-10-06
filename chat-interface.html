@@ -1092,7 +1092,11 @@
           modelSelect.innerHTML = data.models
             .map((model) => `<option value="${model}">${model}</option>`)
             .join("");
+          if (data.current_model && data.current_model !== "None") {
           selectModel(data.current_model);
+          } else if (data.models.length > 0) {
+            selectModel(data.models[0]);
+          }
         } catch (error) {
           console.error("Error loading models:", error);
           addMessage({
