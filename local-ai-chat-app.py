@@ -44,7 +44,7 @@ CONVERSATION_HISTORY_START = """End of conversation-specific instructions.
 
 The conversation history begins below. Focus on the latest human response and continue the conversation accordingly:"""
 
-STOP_PHRASES = ["Human:", "End of example interactions", "Now ending this interaction"]
+STOP_PHRASES = ["Human:", "End of example interactions", "Now ending this interaction", "[INST]", "[Assistant", "End of internal thought", "Please respond as the AI", "end of interaction.", "<|eot_id|>", "<|end_of_text|>"]
 
 def load_model(model_name):
     global current_model, current_model_name
@@ -204,6 +204,8 @@ def switch_branch():
     
     return jsonify({'success': False, 'error': 'No active conversation'}), 400
 
+INTERNAL_THOUGHT_INSTRUCTIONS = """Based on the user's request and conversation history, think deeply about how to respond. Consider the context, and the most appropriate way to address the user's needs, and most importantly hwo to format you response with text blocks, lists, numbered lists, headings and new lines, etc, . Do not include any actual response content here. This is purely for planning your approach to the response. Focus on reasoning, and the key points you'll need to address adn how to format your response."""
+
 
 def generate_ai_response(conversation: Conversation, model_name: str):
     global current_model, current_model_name
@@ -214,17 +216,33 @@ def generate_ai_response(conversation: Conversation, model_name: str):
         current_model_name = model_name
 
     # TODO limit conversation history to X amount of tokens
-    conversation_history = "\n".join([f"{node.sender}: {node.content}\nAI Internal Thought Process: {node.internal_monologue}" for node in conversation.get_current_branch()])
-    full_prompt = f"{SUPER_SYSTEM_PROMPT}\n\n{CONVERSATION_INSTRUCTIONS_START}\n{current_system_prompt}\n\n{CONVERSATION_HISTORY_START}\n{conversation_history}\nAI Internal Thought Process:"
-    
+    # Use GAtt for system prompt, super system prompt, conversation history
+    conversation_history = ""
+    for node in conversation.get_current_branch():
+        if node.sender == "Human":
+            conversation_history += f"[INST] Human: {node.content} [/INST]\n"
+        else:
+            if node.internal_monologue:
+                conversation_history += f"AI Internal Thought Process: {node.internal_monologue}\n"
+            conversation_history += f"AI: {node.content}\n"
+    logging.info(f"Conversation History: {conversation_history}")
+
     yield json.dumps({"status": "generating"})
-    response = current_model(full_prompt, max_tokens=10000, stop=STOP_PHRASES, temperature=0.7, top_p=0.9, top_k=40, repeat_penalty=1.1, presence_penalty=0.1, frequency_penalty=0.01, mirostat_mode=2, mirostat_tau=5.0, mirostat_eta=0.1, echo=True)
-    ai_full_response = response['choices'][0]['text'].split("AI Internal Thought Process:")[-1].strip()
+
+    # Generate internal thought process
+    internal_thought_prompt = f"{SUPER_SYSTEM_PROMPT}\n\n{current_system_prompt}\n\n{CONVERSATION_HISTORY_START}\n" + "\n".join(conversation_history) + f"\n\n{INTERNAL_THOUGHT_INSTRUCTIONS}\nAI Internal Thought Process:"
     
-    parts = ai_full_response.split("AI:", 1)
-    internal_monologue = parts[0].strip() if len(parts) > 1 else ""
-    ai_response = parts[1].strip() if len(parts) > 1 else ai_full_response.strip()
+    internal_thought_response = current_model(internal_thought_prompt, max_tokens=500, stop=["AI:", "Human:"], temperature=0.7)
+    internal_monologue = internal_thought_response['choices'][0]['text'].strip()
+    logging.info(f"Internal Thought Process: {internal_monologue}")
+
+    # Generate actual response
+    response_prompt = f"{SUPER_SYSTEM_PROMPT}\n\n{current_system_prompt}\n\n{CONVERSATION_HISTORY_START}\n" + "\n".join(conversation_history) + f"\n\nAI Internal Thought Process: {internal_monologue}\n\nAI:"
     
+    response = current_model(response_prompt, max_tokens=10000, stop=STOP_PHRASES, temperature=0.7, top_p=0.9, top_k=40, repeat_penalty=1.1, presence_penalty=0.1, frequency_penalty=0.01, mirostat_mode=2, mirostat_tau=5.0, mirostat_eta=0.1)
+    ai_response = response['choices'][0]['text'].strip()
+    logging.info(f"AI Response: {ai_response}")
+
     ai_node = conversation.add_message(ai_response, "AI", current_model_name, internal_monologue)
     save_conversation(conversation, CONVERSATIONS_DIR)
     
@@ -234,6 +252,7 @@ def generate_ai_response(conversation: Conversation, model_name: str):
         "node_id": ai_node.id,
         "timestamp": ai_node.timestamp.isoformat()
     })
+
 
 @app.route('/add_user_message', methods=['POST'])
 def add_user_message():
