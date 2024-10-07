@@ -55,7 +55,6 @@
         padding: 20px;
       }
 
-      header,
       main,
       footer {
         width: 100%;
@@ -65,12 +64,22 @@
       header {
         text-align: center;
         padding: 20px 0;
+        max-width: var(--max-width);
       }
 
       h1 {
         font-size: 2.5rem;
         margin-bottom: 10px;
         color: var(--primary-color);
+      }
+
+      #model-controls-container {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        gap: 10px;
       }
 
       #model-select {
@@ -82,7 +91,6 @@
         background-color: var(--chat-bg);
         color: var(--text-color);
         font-size: 1rem;
-        margin-bottom: 20px;
       }
 
       #chat-container {
@@ -350,10 +358,6 @@
 
       #send-button:hover {
         background-color: var(--primary-hover-color);
-      }
-
-      #system-prompt-button {
-        margin-left: 10px;
       }
 
       @media (max-width: 600px) {
@@ -710,11 +714,13 @@
   <body>
     <header>
       <h1>AI Chat Interface</h1>
-      <button id="add-model-button" class="button">Add Model</button>
-      <select id="model-select"></select>
-      <button id="system-prompt-button" class="button">
-        Edit System Prompt
-      </button>
+      <div id="model-controls-container">
+        <button id="add-model-button" class="button">Add Model</button>
+        <select id="model-select"></select>
+        <button id="system-prompt-button" class="button">
+          Edit System Prompt
+        </button>
+      </div>
 
       <div id="system-prompt-modal" class="modal">
         <div class="modal-content">
