@@ -3,3 +3,4 @@ ai_models/
 conversations/
 __pycache__/
 app.log
+GitIgnore/
