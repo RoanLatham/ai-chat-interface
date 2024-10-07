@@ -740,7 +740,7 @@
                 Open Folder
               </button>
             </div>
-            <div class="url-input">
+            <!-- <div class="url-input">
               <input
                 class="button"
                 type="text"
@@ -750,7 +750,7 @@
               <button id="download-model-button" class="button">
                 Download
               </button>
-            </div>
+            </div> -->
             <p class="info-text">
               Please ensure you use only .gguf file format for compatibility.
             </p>
@@ -1782,10 +1782,10 @@
       );
       const modelsFolderInput = document.getElementById("models-folder");
       const openFolderButton = document.getElementById("open-folder-button");
-      const modelUrlInput = document.getElementById("model-url");
-      const downloadModelButton = document.getElementById(
-        "download-model-button"
-      );
+      // const modelUrlInput = document.getElementById("model-url");
+      // const downloadModelButton = document.getElementById(
+      //   "download-model-button"
+      // );
 
       addModelButton.addEventListener("click", () => {
         addModelModal.style.display = "block";
@@ -1814,36 +1814,36 @@
         }
       });
 
-      downloadModelButton.addEventListener("click", async () => {
-        const url = modelUrlInput.value.trim();
-        if (!url) {
-          alert("Please enter a valid URL");
-          return;
-        }
-        if (!url.endsWith(".gguf")) {
-          alert("Please use only .gguf file format");
-          return;
-        }
+      // downloadModelButton.addEventListener("click", async () => {
+      //   const url = modelUrlInput.value.trim();
+      //   if (!url) {
+      //     alert("Please enter a valid URL");
+      //     return;
+      //   }
+      //   if (!url.endsWith(".gguf")) {
+      //     alert("Please use only .gguf file format");
+      //     return;
+      //   }
 
-        try {
-          const response = await fetch("/download_model", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url: url }),
-          });
-          const data = await response.json();
-          if (data.success) {
-            alert("Model downloaded successfully");
-            modelUrlInput.value = "";
-            loadModels(); // Refresh the model list
-          } else {
-            alert("Error downloading model: " + data.error);
-          }
-        } catch (error) {
-          console.error("Error downloading model:", error);
-          alert("Error downloading model.");
-        }
-      });
+      //   try {
+      //     const response = await fetch("/download_model", {
+      //       method: "POST",
+      //       headers: { "Content-Type": "application/json" },
+      //       body: JSON.stringify({ url: url }),
+      //     });
+      //     const data = await response.json();
+      //     if (data.success) {
+      //       alert("Model downloaded successfully");
+      //       modelUrlInput.value = "";
+      //       loadModels(); // Refresh the model list
+      //     } else {
+      //       alert("Error downloading model: " + data.error);
+      //     }
+      //   } catch (error) {
+      //     console.error("Error downloading model:", error);
+      //     alert("Error downloading model.");
+      //   }
+      // });
 
       // Initialize the chat interface
       loadModels();
