@@ -54,13 +54,15 @@ def load_system_prompt():
 
 SUPER_SYSTEM_PROMPT = load_system_prompt()
 
-DEFAULT_SYSTEM_PROMPT = """ """
+DEFAULT_SYSTEM_PROMPT = """You are a helpful AI assistant. You are knowledgeable, friendly, and always strive to provide accurate and useful information."""
 
 current_system_prompt = DEFAULT_SYSTEM_PROMPT
 
-CONVERSATION_INSTRUCTIONS_START = "The following are conversation-specific instructions provided by the user for this interaction:"
+SYSTEM_PROMPT_PREPEND ="""The following are conversation-specific instructions provided by the user for this interaction: 
+<<SYS>>"""
 
-CONVERSATION_HISTORY_START = """End of conversation-specific instructions.
+SYSTEM_PROMPT_APPEND = """<</SYS>>
+End of conversation-specific instructions.
 
 The conversation history begins below. Focus on the latest human response and continue the conversation accordingly:"""
 
@@ -99,7 +101,6 @@ Format your thoughts clearly and concisely. This is for internal planning only a
 you will be provided with an opening <AI Internal Thought> tag, you must end your response with a closing response tag: </AI Internal Thought>
 """
 
-
 def generate_ai_response(conversation: Conversation, model_name: str, max_tokens: int = 300): #-> Generator[str, None, None]:
     global current_model, current_model_name
 
@@ -116,17 +117,15 @@ def generate_ai_response(conversation: Conversation, model_name: str, max_tokens
         
         # Generate internal thought
         internal_thought = generate_internal_thought(current_model, history)
-        
         app_logger.info(f"Generated internal thought: {internal_thought}")
         
         # Generate AI response
         ai_response = generate_final_response(current_model, history, internal_thought)
-        
+        app_logger.info(f"Generated AI response: {ai_response}")
+
         # Add the new message to the conversation
         ai_node = conversation.add_message(ai_response, "AI", current_model_name, internal_thought)
         save_conversation(conversation, CONVERSATIONS_DIR)
-
-        app_logger.info(f"Generated AI response: {ai_response}")
         
         yield json.dumps({
             "status": "complete",
@@ -208,22 +207,39 @@ def prepare_gatt_history(conversation: Conversation, max_tokens: int = 300) -> s
     app_logger.info(f"Final history: {final_history}")
     return final_history
 
-def generate_internal_thought(model, history):
-    prompt = f"{SUPER_SYSTEM_PROMPT}\n\n{history}\n\n{INTERNAL_THOUGHT_PROMPT}\n<AI Internal Thought>"
-    response = model(prompt, max_tokens=500, stop=STOP_PHRASES)
-    return response['choices'][0]['text'].strip()
-
-def generate_final_response(model, history, internal_thought):
-    prompt = f"{SUPER_SYSTEM_PROMPT}\n\n{history}\n\n<AI Internal Thought>{internal_thought}\n\n<AI Response>"
-    response = model(prompt, max_tokens=4096, stop=STOP_PHRASES)
-    return response['choices'][0]['text'].strip()
-
 def reduce_context(conversation: Conversation, error: ValueError, max_tokens: int) -> str:
     tokens_to_reduce = int(re.search(r'\((\d+)\)', str(error)).group(1))
     buffer = int(tokens_to_reduce * 1.5)  # Add 50% buffer
     
     reduced_max_tokens = max(max_tokens - buffer, 500)  # Ensure we don't go below a minimum threshold
     return prepare_gatt_history(conversation, max_tokens=reduced_max_tokens)
+
+def prepare_full_prompt(history: str, internal_thought: str = "") -> str:
+    full_prompt = f"{SUPER_SYSTEM_PROMPT}\n\n"
+    
+    if current_system_prompt and current_system_prompt != DEFAULT_SYSTEM_PROMPT:
+        full_prompt += f"{SYSTEM_PROMPT_PREPEND}\n{current_system_prompt}\n{SYSTEM_PROMPT_APPEND}\n\n"
+    
+    full_prompt += f"{history}\n\n"
+    
+    if internal_thought:
+        full_prompt += f"<AI Internal Thought>{internal_thought}\n\n"
+    
+    full_prompt += "<AI Response>"
+    
+    logger.info(f"Prepared full prompt: {full_prompt}")
+
+    return full_prompt
+
+def generate_internal_thought(model, history: str):
+    prompt = prepare_full_prompt(history) + f"\n\n{INTERNAL_THOUGHT_PROMPT}\n<AI Internal Thought>"
+    response = model(prompt, max_tokens=500, stop=STOP_PHRASES)
+    return response['choices'][0]['text'].strip()
+
+def generate_final_response(model, history: str, internal_thought: str):
+    prompt = prepare_full_prompt(history, internal_thought)
+    response = model(prompt, max_tokens=4096, stop=STOP_PHRASES)
+    return response['choices'][0]['text'].strip()
 
 
 def load_model(model_name):
