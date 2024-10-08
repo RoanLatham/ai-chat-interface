@@ -1665,36 +1665,41 @@
       });
 
       saveSystemPromptButton.addEventListener("click", async () => {
-        currentSystemPrompt = systemPromptInput.value;
-        systemPromptModal.style.display = "none";
-        addMessage({
-          id: Date.now().toString(),
-          content: "System prompt updated",
-          sender: "System",
-          timestamp: null,
-        });
+        const newSystemPrompt = systemPromptInput.value.trim();
 
-        try {
-          await fetch("/chat", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              message: "",
-              model: currentModel,
-              system_prompt: currentSystemPrompt,
-            }),
+        fetch("/set_system_prompt", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ system_prompt: newSystemPrompt }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              console.log("System prompt updated successfully");
+              // Optionally, you can update the UI to reflect the change
+              // systemPromptInput.value = data.system_prompt;
+              systemPromptModal.style.display = "none";
+              addMessage({
+                id: Date.now().toString(),
+                content: "System prompt updated",
+                sender: "System",
+                timestamp: null,
+              });
+            } else {
+              console.error("Failed to update system prompt:", data.error);
+            }
+          })
+          .catch((error) => {
+            console.error("Error updating system prompt:", error);
+            addMessage({
+              id: Date.now().toString(),
+              content: "Error updating system prompt:" + error.message,
+              sender: "System",
+              timestamp: null,
+            });
           });
-        } catch (error) {
-          console.error("Error updating system prompt:", error);
-          addMessage({
-            id: Date.now().toString(),
-            content: error.message,
-            sender: "System",
-            timestamp: null,
-          });
-        }
       });
 
       // load default system prompt

@@ -231,6 +231,18 @@ def prepare_full_prompt(history: str, internal_thought: str = "") -> str:
 
     return full_prompt
 
+@app.route('/set_system_prompt', methods=['POST'])
+def set_system_prompt():
+    global current_system_prompt
+    data = request.json
+    new_system_prompt = data.get('system_prompt')
+    
+    if new_system_prompt is not None:
+        current_system_prompt = new_system_prompt
+        return jsonify({'success': True, 'system_prompt': current_system_prompt})
+    else:
+        return jsonify({'success': False, 'error': 'No system prompt provided'}), 400
+
 def generate_internal_thought(model, history: str):
     prompt = prepare_full_prompt(history) + f"\n\n{INTERNAL_THOUGHT_PROMPT}\n<AI Internal Thought>"
     response = model(prompt, max_tokens=500, stop=STOP_PHRASES)
