@@ -76,7 +76,7 @@ You can also nest lists:
 
 ## Code Blocks
 
-For code blocks, use triple backticks ````:
+For code blocks, use triple backticks ```:
 
 ```
 def hello_world():
