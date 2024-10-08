@@ -1,10 +1,14 @@
 import os
 from datetime import datetime
 import logging
+import re
+from typing import List
 from flask import Flask, Response, request, jsonify, send_from_directory
 from llama_cpp import Llama
-from Conversation import Conversation, create_conversation, save_conversation, load_conversation, load_all_conversations
+from Conversation import Conversation, create_conversation, save_conversation, load_conversation, load_all_conversations, Node
 import json
+import time
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO,
@@ -26,7 +30,7 @@ current_model_name = None
 
 current_conversation = None
 
-NAMING_PROMPT = """Based on the user's first message, generate a short, concise title for this conversation. The title should be no more than 5 words long and should capture the essence of the topic or query. Respond with only the title, nothing else."""
+NAMING_PROMPT = """Based on the user's first message, generate a short, concise title for this conversation. The title should be no more than 5 words long and should capture the essence of the topic or query. if the message is vague or doesn't describe a definitive topic, try to include words form the users message in the title, if that still doesn't work, use a more general title. Respond with only the title, nothing else."""
 
 def load_system_prompt():
     with open('system-prompt.txt', 'r') as file:
@@ -34,17 +38,172 @@ def load_system_prompt():
 
 SUPER_SYSTEM_PROMPT = load_system_prompt()
 
-DEFAULT_SYSTEM_PROMPT = """You are a helpful, respectful, and honest AI assistant. Always provide accurate information and if you're unsure, admit it. Prioritize user safety and well-being in your responses. Be concise yet informative, and tailor your language to the user's level of understanding. Respect privacy and ethical boundaries in your interactions."""
+DEFAULT_SYSTEM_PROMPT = """ """
 
 current_system_prompt = DEFAULT_SYSTEM_PROMPT
 
-CONVERSATION_INSTRUCTIONS_START = "The following are conversation-specific instructions provided by the user (Human) for this interaction:"
+CONVERSATION_INSTRUCTIONS_START = "The following are conversation-specific instructions provided by the user for this interaction:"
 
 CONVERSATION_HISTORY_START = """End of conversation-specific instructions.
 
 The conversation history begins below. Focus on the latest human response and continue the conversation accordingly:"""
 
-STOP_PHRASES = ["Human:", "End of example interactions", "Now ending this interaction", "[INST]", "[Assistant", "End of internal thought", "Please respond as the AI", "end of interaction.", "<|eot_id|>", "<|end_of_text|>"]
+STOP_PHRASES = ["Human:",
+                "End of example interactions",
+                "Now ending this interaction",
+                "[INST]",
+                "[Assistant",
+                "End of internal thought",
+                "Please respond as the AI",
+                "end of interaction.",
+                "<|eot_id|>",
+                "<|end_of_text|>",
+                "<>",
+                "<</SYS>>",
+                "<user>",
+                "</user>",
+                "<<user>>",
+                "<</user>>",
+                "</AI Response>",
+                "<</AI Response>>",
+                "</AI Internal Thought>",
+                "<</AI Internal Thought>>",
+                "Your response is awaited."]
+
+INTERNAL_THOUGHT_PROMPT = """
+Analyze the conversation history and the user's latest message. Formulate a strategy for responding, considering:
+1. Key points to address
+2. Tone and style appropriate for the context
+3. Potential clarifications or additional information needed
+4. Any relevant background knowledge to incorporate
+5. the best way to format the response using codeblocks headings, list, numbered lists etc, if necessary
+
+Format your thoughts clearly and concisely. This is for internal planning only and will not be shown to the user.
+
+you will be provided with an opening <AI Internal Thought> tag, you must end your response with a closing response tag: </AI Internal Thought>
+"""
+
+
+def generate_ai_response(conversation: Conversation, model_name: str, max_tokens: int = 300): #-> Generator[str, None, None]:
+    global current_model, current_model_name
+
+    if current_model is None or current_model_name != model_name:
+        yield json.dumps({"status": "loading_model"})
+        current_model = load_model(model_name)
+        current_model_name = model_name
+
+    yield json.dumps({"status": "generating"})
+
+    try:
+        # Prepare conversation history with GAtt formatting and limit to max_tokens
+        history = prepare_gatt_history(conversation, max_tokens=max_tokens)
+        
+        # Generate internal thought
+        internal_thought = generate_internal_thought(current_model, history)
+        
+        # Generate AI response
+        ai_response = generate_final_response(current_model, history, internal_thought)
+        
+        # Add the new message to the conversation
+        ai_node = conversation.add_message(ai_response, "AI", current_model_name, internal_thought)
+        save_conversation(conversation, CONVERSATIONS_DIR)
+        
+        yield json.dumps({
+            "status": "complete",
+            "response": ai_response,
+            "node_id": ai_node.id,
+            "timestamp": ai_node.timestamp.isoformat()
+        })
+    except ValueError as e:
+        if "exceed context window" in str(e):
+            # Attempt to reduce context and retry once
+            reduced_history = reduce_context(conversation, e, max_tokens)
+            try:
+                internal_thought = generate_internal_thought(current_model, reduced_history)
+                ai_response = generate_final_response(current_model, reduced_history, internal_thought)
+                ai_node = conversation.add_message(ai_response, "AI", current_model_name, internal_thought)
+                save_conversation(conversation, CONVERSATIONS_DIR)
+                yield json.dumps({
+                    "status": "complete",
+                    "response": ai_response,
+                    "node_id": ai_node.id,
+                    "timestamp": ai_node.timestamp.isoformat()
+                })
+            except Exception:
+                yield json.dumps({"status": "error", "message": "Context too large even after reduction"})
+        else:
+            yield json.dumps({"status": "error", "message": str(e)})
+
+def prepare_gatt_history(conversation: Conversation, max_tokens: int = 300) -> str:
+    start_time = time.time()
+
+    def format_node(node: Node) -> str:
+        if node.sender == "Human":
+            return f"<user>{node.content}</user>\n"
+        else:
+            internal_thought = f"<AI Internal Thought>{node.internal_monologue}</AI Internal Thought>\n" if node.internal_monologue else ""
+            return f"{internal_thought}<AI Response>{node.content}</AI Response>\n\n"
+
+    def tokenize(text: str) -> List[int]:
+        return current_model.tokenize(text.encode('utf-8'))
+
+    def count_tokens(text: str) -> int:
+        return len(tokenize(text))
+
+    branch = conversation.get_current_branch()
+    
+    # Ensure we have at least 3 message groups or all available if less
+    guaranteed_nodes = branch[-min(6, len(branch)):]
+    remaining_nodes = branch[:-len(guaranteed_nodes)]
+
+    # Format and tokenize guaranteed messages
+    guaranteed_history = "\n".join(format_node(node) for node in guaranteed_nodes)
+    guaranteed_tokens = count_tokens(guaranteed_history)
+
+    # Prepare the rest of the history
+    remaining_history = []
+    current_tokens = guaranteed_tokens
+    omission_notice = "<system>Some messages have been omitted to fit the context window.</system>"
+    omission_tokens = count_tokens(omission_notice)
+
+    for node in reversed(remaining_nodes):
+        formatted_node = format_node(node)
+        node_tokens = count_tokens(formatted_node)
+        
+        if current_tokens + node_tokens + omission_tokens <= max_tokens:
+            remaining_history.insert(0, formatted_node)
+            current_tokens += node_tokens
+        else:
+            remaining_history.insert(0, omission_notice)
+            current_tokens += omission_tokens
+            break
+
+    # Combine the parts
+    final_history = f"{guaranteed_history}\n" + "\n".join(remaining_history)
+
+    end_time = time.time()
+    execution_time = end_time - start_time
+    logging.info(f"Prepared conversation history with ~{current_tokens} tokens in {execution_time:.4f} seconds")
+    logging.info(f"History length: {len(branch)} messages, {len(remaining_nodes)} potentially trimmed")
+    return final_history
+
+def generate_internal_thought(model, history):
+    prompt = f"{SUPER_SYSTEM_PROMPT}\n\n{history}\n\n{INTERNAL_THOUGHT_PROMPT}\n<AI Internal Thought>"
+    response = model(prompt, max_tokens=500, stop=STOP_PHRASES)
+    return response['choices'][0]['text'].strip()
+
+def generate_final_response(model, history, internal_thought):
+    prompt = f"{SUPER_SYSTEM_PROMPT}\n\n{history}\n\n<AI Internal Thought>{internal_thought}\n\n<AI Response>"
+    response = model(prompt, max_tokens=4096, stop=STOP_PHRASES)
+    return response['choices'][0]['text'].strip()
+
+def reduce_context(conversation: Conversation, error: ValueError, max_tokens: int) -> str:
+    tokens_to_reduce = int(re.search(r'\((\d+)\)', str(error)).group(1))
+    buffer = int(tokens_to_reduce * 1.5)  # Add 50% buffer
+    
+    reduced_max_tokens = max(max_tokens - buffer, 500)  # Ensure we don't go below a minimum threshold
+    return prepare_gatt_history(conversation, max_tokens=reduced_max_tokens)
+
 
 def load_model(model_name):
     global current_model, current_model_name
@@ -203,56 +362,6 @@ def switch_branch():
         })
     
     return jsonify({'success': False, 'error': 'No active conversation'}), 400
-
-INTERNAL_THOUGHT_INSTRUCTIONS = """Based on the user's request and conversation history, think deeply about how to respond. Consider the context, and the most appropriate way to address the user's needs, and most importantly hwo to format you response with text blocks, lists, numbered lists, headings and new lines, etc, . Do not include any actual response content here. This is purely for planning your approach to the response. Focus on reasoning, and the key points you'll need to address adn how to format your response."""
-
-
-def generate_ai_response(conversation: Conversation, model_name: str):
-    global current_model, current_model_name
-
-    if current_model is None or current_model_name != model_name:
-        yield json.dumps({"status": "loading_model"})
-        current_model = load_model(model_name)
-        current_model_name = model_name
-
-    # TODO limit conversation history to X amount of tokens
-    # Use GAtt for system prompt, super system prompt, conversation history
-    conversation_history = ""
-    for node in conversation.get_current_branch():
-        if node.sender == "Human":
-            conversation_history += f"[INST] Human: {node.content} [/INST]\n"
-        else:
-            if node.internal_monologue:
-                conversation_history += f"AI Internal Thought Process: {node.internal_monologue}\n"
-            conversation_history += f"AI: {node.content}\n"
-    logging.info(f"Conversation History: {conversation_history}")
-
-    yield json.dumps({"status": "generating"})
-
-    # Generate internal thought process
-    internal_thought_prompt = f"{SUPER_SYSTEM_PROMPT}\n\n{current_system_prompt}\n\n{CONVERSATION_HISTORY_START}\n" + "\n".join(conversation_history) + f"\n\n{INTERNAL_THOUGHT_INSTRUCTIONS}\nAI Internal Thought Process:"
-    
-    internal_thought_response = current_model(internal_thought_prompt, max_tokens=500, stop=["AI:", "Human:"], temperature=0.7)
-    internal_monologue = internal_thought_response['choices'][0]['text'].strip()
-    logging.info(f"Internal Thought Process: {internal_monologue}")
-
-    # Generate actual response
-    response_prompt = f"{SUPER_SYSTEM_PROMPT}\n\n{current_system_prompt}\n\n{CONVERSATION_HISTORY_START}\n" + "\n".join(conversation_history) + f"\n\nAI Internal Thought Process: {internal_monologue}\n\nAI:"
-    
-    response = current_model(response_prompt, max_tokens=10000, stop=STOP_PHRASES, temperature=0.7, top_p=0.9, top_k=40, repeat_penalty=1.1, presence_penalty=0.1, frequency_penalty=0.01, mirostat_mode=2, mirostat_tau=5.0, mirostat_eta=0.1)
-    ai_response = response['choices'][0]['text'].strip()
-    logging.info(f"AI Response: {ai_response}")
-
-    ai_node = conversation.add_message(ai_response, "AI", current_model_name, internal_monologue)
-    save_conversation(conversation, CONVERSATIONS_DIR)
-    
-    yield json.dumps({
-        "status": "complete",
-        "response": ai_response,
-        "node_id": ai_node.id,
-        "timestamp": ai_node.timestamp.isoformat()
-    })
-
 
 @app.route('/add_user_message', methods=['POST'])
 def add_user_message():
