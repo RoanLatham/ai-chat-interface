@@ -117,12 +117,16 @@ def generate_ai_response(conversation: Conversation, model_name: str, max_tokens
         # Generate internal thought
         internal_thought = generate_internal_thought(current_model, history)
         
+        app_logger.info(f"Generated internal thought: {internal_thought}")
+        
         # Generate AI response
         ai_response = generate_final_response(current_model, history, internal_thought)
         
         # Add the new message to the conversation
         ai_node = conversation.add_message(ai_response, "AI", current_model_name, internal_thought)
         save_conversation(conversation, CONVERSATIONS_DIR)
+
+        app_logger.info(f"Generated AI response: {ai_response}")
         
         yield json.dumps({
             "status": "complete",
@@ -201,6 +205,7 @@ def prepare_gatt_history(conversation: Conversation, max_tokens: int = 300) -> s
     execution_time = end_time - start_time
     app_logger.info(f"Prepared conversation history with ~{current_tokens} tokens in {execution_time:.4f} seconds")
     app_logger.info(f"History length: {len(branch)} messages, {len(remaining_nodes)} potentially trimmed")
+    app_logger.info(f"Final history: {final_history}")
     return final_history
 
 def generate_internal_thought(model, history):
