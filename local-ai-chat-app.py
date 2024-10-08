@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 import logging
+from logging.handlers import RotatingFileHandler
 import re
 from typing import List
 from flask import Flask, Response, request, jsonify, send_from_directory
@@ -9,16 +10,31 @@ from Conversation import Conversation, create_conversation, save_conversation, l
 import json
 import time
 
+# Configure custom logging
+app_logger = logging.getLogger('app')
+app_logger.setLevel(logging.INFO)
+file_handler = RotatingFileHandler('app.log', maxBytes=10000000, backupCount=5)
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+app_logger.addHandler(file_handler)
 
-# Configure logging
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    filename='app.log',
-                    filemode='a')
+# Configure Flask logging
+werkzeug_logger = logging.getLogger('werkzeug')
+werkzeug_logger.setLevel(logging.INFO)
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+werkzeug_logger.addHandler(console_handler)
+
+# Remove default handlers from the root logger
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
 
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# Disable Flask's default logging
+app.logger.handlers = []
+app.logger.propagate = False
 
 # Directory containing AI models
 MODELS_DIR = "ai_models"
@@ -183,8 +199,8 @@ def prepare_gatt_history(conversation: Conversation, max_tokens: int = 300) -> s
 
     end_time = time.time()
     execution_time = end_time - start_time
-    logging.info(f"Prepared conversation history with ~{current_tokens} tokens in {execution_time:.4f} seconds")
-    logging.info(f"History length: {len(branch)} messages, {len(remaining_nodes)} potentially trimmed")
+    app_logger.info(f"Prepared conversation history with ~{current_tokens} tokens in {execution_time:.4f} seconds")
+    app_logger.info(f"History length: {len(branch)} messages, {len(remaining_nodes)} potentially trimmed")
     return final_history
 
 def generate_internal_thought(model, history):
@@ -211,7 +227,7 @@ def load_model(model_name):
         selected_model_path = os.path.join(MODELS_DIR, model_name)
         # Convert backslashes to forward slashes and ensure it starts with "./"
         selected_model_path = "./" + selected_model_path.replace("\\", "/")
-        logging.info(f"Loading model: {selected_model_path}")
+        app_logger.info(f"Loading model: {selected_model_path}")
         current_model = Llama(model_path=selected_model_path, n_ctx=4096, n_threads=8, seed=42, f16_kv=True, use_mlock=True)
         current_model_name = model_name
     return current_model
@@ -453,7 +469,7 @@ def edit_message():
 def get_original_content():
     data = request.json
     node_id = data['node_id']
-    logging.info(f"Getting original content for node_id: {node_id}")
+    app_logger.info(f"Getting original content for node_id: {node_id}")
     
     if current_conversation:
         node = current_conversation.find_node(node_id)
