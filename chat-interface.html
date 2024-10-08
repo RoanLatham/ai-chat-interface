@@ -35,12 +35,35 @@
         --secondary-color-light: #c8f4f6;
         --accent-color: #fd79a8;
         --chat-bg: #2d3436;
-        --max-width: 70vw;
+        --max-width: 75vw;
         --button-color: #4d5b5f;
         --button-hover-color: #72858a;
         --conversation-bg: #3e4a4c;
         --conversation-delete-button-hover: #e74c3c;
         --subtle-text-color: #888888;
+        /* scaling variables */
+        --conversation-list-width: 25%;
+        --message-font-size: 18px;
+        --message-max-width: 70%;
+      }
+
+      /* Media query for 2K displays */
+      /* adjusts size of conversation list and message font size */
+      @media (min-width: 2048px) {
+        :root {
+          --conversation-list-width: clamp(300px, 22%, 25%);
+          --message-font-size: 20px;
+          --message-max-width: 80%;
+        }
+      }
+
+      /* smooth animations for scaling */
+      .message,
+      .message-container {
+        transition: all 0.125s ease;
+      }
+      #conversation-list {
+        transition: all 0.3s ease;
       }
 
       * {
@@ -117,6 +140,7 @@
         margin-bottom: 15px;
         width: 100%;
         position: relative;
+        font-size: var(--message-font-size);
         /* animation: fadeInUp  0.3s ease-out;  not sure if one anim or the 2 different anim's is better*/
       }
 
@@ -132,6 +156,7 @@
         padding: 10px 15px;
         border-radius: 20px;
         animation: fadeInUp 0.3s ease-out;
+        max-width: var(--message-max-width);
         max-width: 70%;
       }
 
@@ -475,11 +500,11 @@
         display: flex;
         width: 100%;
         max-width: var(--max-width);
-        height: 66vh;
+        height: 70vh;
       }
 
       #conversation-list {
-        width: 22%;
+        width: var(--conversation-list-width);
         flex-shrink: 0;
         background-color: var(--chat-bg);
         padding: 15px;
@@ -677,13 +702,15 @@
         font-size: inherit;
       }
 
-      .editing {
+      .edit-message-input {
         border: 1px solid var(--button-color);
         padding: 5px;
         border-radius: 5px;
         background-color: transparent;
         min-width: 200px;
+        max-width: 100%;
         color: inherit;
+        font-size: var(--message-font-size);
       }
 
       .disabled {
@@ -1171,14 +1198,16 @@
             const originalContent = data.content;
 
             messageElement.innerHTML = `
-                <textarea class="editing">${originalContent}</textarea>
+                <textarea class="edit-message-input">${originalContent}</textarea>
                 <div class="edit-controls">
                     <button class="button cancel-edit">Cancel</button>
                     <button class="button submit-edit">Submit</button>
                 </div>
             `;
 
-            const textarea = messageElement.querySelector(".editing");
+            const textarea = messageElement.querySelector(
+              ".edit-message-input"
+            );
             textarea.style.height = `${originalHeight}px`;
             textarea.style.width = `${originalWidth}px`;
             const cancelButton = messageElement.querySelector(".cancel-edit");
