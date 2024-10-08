@@ -23,13 +23,16 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css"
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
       :root {
         --bg-color: #1a1a1a;
         --text-color: #ffffff;
         --primary-color: #6c5ce7;
+        --primary-color-dark: #5044bd;
         --primary-hover-color: #5f51e8;
         --secondary-color: #81ecec;
+        --secondary-color-light: #c8f4f6;
         --accent-color: #fd79a8;
         --chat-bg: #2d3436;
         --max-width: 70vw;
@@ -131,6 +134,13 @@
         animation: fadeInUp 0.3s ease-out;
       }
 
+      /* this is to prevent the last element from having extra margin */
+      /* also includes the children of children to handle the contents of lists */
+      .message > *:last-child > *:last-child,
+      .message > *:last-child {
+        margin-bottom: 0;
+      }
+
       /* text block styles */
       .message pre {
         background-color: #2d3436;
@@ -142,13 +152,31 @@
         /* border: 1px solid var(--primary-color); */
       }
 
-      .message code {
+      .message pre code {
         background-color: rgba(108, 92, 231, 0.1);
         color: var(--text-color);
         font-family: "Roboto Mono", monospace;
         padding: 2px 4px;
         border-radius: 3px;
         font-size: 0.9em;
+      }
+
+      /* Styles for inline code in AI messages */
+      .ai-message code:not(pre code) {
+        background-color: var(--secondary-color-light);
+        color: #2d3436;
+        padding: 1px 2px;
+        border-radius: 3px;
+        font-family: inherit;
+      }
+
+      /* Styles for inline code in human messages */
+      .human-message code:not(pre code) {
+        background-color: var(--primary-color-dark);
+        color: #ffffff;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-family: inherit;
       }
 
       .language-label {
@@ -239,6 +267,32 @@
         background-color: var(--accent-color);
         color: var(--bg-color);
         font-style: italic;
+      }
+
+      /* Marked markdown styles */
+
+      .message h1,
+      .message h2,
+      .message h3,
+      .message h4,
+      .message h5,
+      .message h6 {
+        margin-top: 1em;
+        margin-bottom: 0.5em;
+      }
+
+      .message ul,
+      .message ol {
+        margin-left: 1.5em;
+        margin-bottom: 1em;
+      }
+
+      .message li {
+        margin-bottom: 0.5em;
+      }
+
+      .message p {
+        margin-bottom: 1em;
       }
 
       .typing-dots {
@@ -1024,8 +1078,12 @@
       }
 
       function formatMessage(content) {
-        const formattedContent = content.replace(
-          /```(\w+)?\n([\s\S]*?)```/g,
+        // Parse markdown
+        let formattedContent = marked.parse(content);
+
+        // Handle code blocks and add language labels
+        formattedContent = formattedContent.replace(
+          /<pre><code(?:\s+class="language-(\w+)")?>([\s\S]*?)<\/code><\/pre>/g,
           (match, lang, code) => {
             const language = lang || "";
             const highlightedCode = hljs.highlightAuto(
@@ -1038,11 +1096,7 @@
           }
         );
 
-        const wrappedContent = `<p>${formattedContent.replace(
-          /\n/g,
-          "<br>"
-        )}</p>`;
-        return wrappedContent;
+        return formattedContent;
       }
 
       function addMessage(message) {
