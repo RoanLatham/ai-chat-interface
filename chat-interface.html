@@ -325,6 +325,23 @@
         margin-bottom: 1em;
       }
 
+      /* Style for horizontal rule */
+      .message hr {
+        border: none;
+        height: 0.1rem;
+        min-height: 1px;
+        background: linear-gradient(
+          to right,
+          transparent 0%,
+          var(--bg-color) 45%,
+          var(--bg-color) 55%,
+          transparent 100%
+        );
+        margin: 20px 0;
+        opacity: 0.6;
+        transition: all 0.3s ease;
+      }
+
       .typing-dots {
         display: flex;
         justify-content: center;
