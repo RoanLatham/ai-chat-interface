@@ -95,6 +95,13 @@
         max-width: var(--max-width);
       }
 
+      #system-prompt-button span,
+      #add-model-button span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
       h1 {
         font-size: 2.5rem;
         margin-bottom: 10px;
@@ -835,10 +842,12 @@
     <header>
       <h1>AI Chat Interface</h1>
       <div id="model-controls-container">
-        <button id="add-model-button" class="button">Add Model</button>
+        <button id="add-model-button" class="button">
+          <span>Add Model</span>
+        </button>
         <select id="model-select"></select>
         <button id="system-prompt-button" class="button">
-          Edit System Prompt
+          <span>Edit System Prompt</span>
         </button>
       </div>
 
