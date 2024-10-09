@@ -29,18 +29,25 @@
         --bg-color: #1a1a1a;
         --text-color: #ffffff;
         --primary-color: #6c5ce7;
-        --primary-color-dark: #5044bd;
         --primary-hover-color: #5f51e8;
         --secondary-color: #81ecec;
-        --secondary-color-light: #c8f4f6;
+        --secondary-hover-color: #66bdbd;
         --accent-color: #fd79a8;
+        --accent-hover-color: #e74c3c;
         --chat-bg: #2d3436;
-        --max-width: 75vw;
+        --chat-bg-hover: #272e30;
         --button-color: #4d5b5f;
-        --button-hover-color: #72858a;
+        --button-hover-color: #424d50;
+        /* --button-hover-color: #364a4f; */
         --conversation-bg: #3e4a4c;
-        --conversation-delete-button-hover: #e74c3c;
+        --conversation-hover-color: #363f41;
+
+        --primary-color-dark: #5044bd;
+        --secondary-color-light: #c8f4f6;
         --subtle-text-color: #888888;
+
+        --max-width: 75vw;
+
         /* scaling variables */
         --conversation-list-width: 25%;
         --message-font-size: 18px;
@@ -126,6 +133,11 @@
         background-color: var(--chat-bg);
         color: var(--text-color);
         font-size: 1rem;
+        transition: background-color 0.3s ease;
+      }
+
+      #model-select:hover {
+        background-color: var(--chat-bg-hover);
       }
 
       #chat-container {
@@ -447,10 +459,17 @@
         font-size: 1rem;
         cursor: pointer;
         transition: background-color 0.3s ease;
+        transition: transform 0.3s ease-in-out;
       }
 
       .button:hover {
         background-color: var(--button-hover-color);
+        /* transform: scale(1.02); */
+      }
+
+      button:active {
+        transition: transform 0.1s ease-in-out;
+        transform: scale(0.95);
       }
 
       #send-button {
@@ -495,6 +514,7 @@
         height: 100%;
         overflow: auto;
         background-color: rgba(0, 0, 0, 0.4);
+        animation: fadeInUp 0.3s ease-out;
       }
 
       .modal-content {
@@ -555,6 +575,17 @@
         border-radius: 8px;
         margin-bottom: 10px;
         transition: background-color 0.3s ease;
+        transition: transform 0.3s ease;
+      }
+
+      .conversation-item:hover {
+        background-color: var(--conversation-hover-color);
+        transform: scale(1.02);
+      }
+
+      .conversation-item.active {
+        background-color: var(--primary-color);
+        transform: scale(1.01);
       }
 
       .conversation-name {
@@ -582,14 +613,6 @@
         opacity: 1;
       }
 
-      .conversation-item:hover {
-        background-color: var(--primary-color);
-      }
-
-      .conversation-item.active {
-        background-color: var(--primary-color);
-      }
-
       .conversation-button {
         display: flex;
         align-items: center;
@@ -601,15 +624,17 @@
         border-radius: 20px;
         cursor: pointer;
         transition: background-color 0.3s ease;
+        transition: transform 0.3s ease;
         margin-left: 5px;
       }
 
       .conversation-button:hover {
-        background-color: var(--button-hover-color);
+        background-color: #424d50;
+        transform: scale(1.05);
       }
 
       .delete-button:hover {
-        background-color: var(--conversation-delete-button-hover);
+        background-color: var(--accent-hover-color);
       }
 
       .conversation-button svg {
@@ -642,10 +667,12 @@
         width: 100%;
         transition: background-color 0.3s ease;
         font-family: inherit;
+        transition: transform 0.3s ease;
       }
 
       .new-chat-button:hover {
-        background-color: var(--primary-color);
+        background-color: var(--conversation-hover-color);
+        transform: scale(1.02);
       }
 
       .new-chat-button svg {
@@ -1054,14 +1081,6 @@
                   slower model.
                 </li>
               </ul>
-
-              <button
-                id="close-guide-button"
-                class="button guide-button"
-                style="display: none"
-              >
-                Close Guide
-              </button>
             </section>
 
             <section class="guide-section">
@@ -1086,6 +1105,13 @@
                 Once you've added a model, refresh this page to start chatting!
               </p>
             </section>
+            <button
+              id="close-guide-button"
+              class="button guide-button"
+              style="display: none"
+            >
+              Close Guide
+            </button>
           </div>
         </div>
         <footer id="input-container">
