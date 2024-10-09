@@ -514,7 +514,6 @@
         height: 100%;
         overflow: auto;
         background-color: rgba(0, 0, 0, 0.4);
-        animation: fadeInUp 0.3s ease-out;
       }
 
       .modal-content {
@@ -527,6 +526,11 @@
         max-width: var(--max-width);
         display: flex;
         flex-direction: column;
+        animation: fadeInUp 0.15s ease-out;
+      }
+
+      .modal-content.closing {
+        animation: fadeOutDown 0.15s ease-out;
       }
 
       .modal-content h2 {
@@ -969,7 +973,7 @@
               Load Default
             </button>
             <button id="save-system-prompt" class="button">Save</button>
-            <button id="close-modal" class="button">Close</button>
+            <button id="close-system-prompt-modal" class="button">Close</button>
           </div>
         </div>
       </div>
@@ -1891,103 +1895,6 @@
         });
       });
 
-      // System prompt scripts
-      const systemPromptButton = document.getElementById(
-        "system-prompt-button"
-      );
-      const systemPromptModal = document.getElementById("system-prompt-modal");
-      const systemPromptInput = document.getElementById("system-prompt-input");
-      const saveSystemPromptButton =
-        document.getElementById("save-system-prompt");
-      const closeModalButton = document.getElementById("close-modal");
-
-      let currentSystemPrompt = "";
-
-      async function loadSystemPrompt() {
-        try {
-          const response = await fetch("/system_prompt");
-          const data = await response.json();
-          currentSystemPrompt = data.system_prompt;
-          systemPromptInput.value = currentSystemPrompt;
-        } catch (error) {
-          console.error("Error loading system prompt:", error);
-          addMessage({
-            id: Date.now().toString(),
-            content: error.message,
-            sender: "System",
-            timestamp: null,
-          });
-        }
-      }
-
-      systemPromptButton.addEventListener("click", () => {
-        loadSystemPrompt();
-        systemPromptModal.style.display = "block";
-      });
-
-      closeModalButton.addEventListener("click", () => {
-        systemPromptModal.style.display = "none";
-      });
-
-      saveSystemPromptButton.addEventListener("click", async () => {
-        const newSystemPrompt = systemPromptInput.value.trim();
-
-        fetch("/set_system_prompt", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ system_prompt: newSystemPrompt }),
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.success) {
-              console.log("System prompt updated successfully");
-              // Optionally, you can update the UI to reflect the change
-              // systemPromptInput.value = data.system_prompt;
-              systemPromptModal.style.display = "none";
-              addMessage({
-                id: Date.now().toString(),
-                content: "System prompt updated",
-                sender: "System",
-                timestamp: null,
-              });
-            } else {
-              console.error("Failed to update system prompt:", data.error);
-            }
-          })
-          .catch((error) => {
-            console.error("Error updating system prompt:", error);
-            addMessage({
-              id: Date.now().toString(),
-              content: "Error updating system prompt:" + error.message,
-              sender: "System",
-              timestamp: null,
-            });
-          });
-      });
-
-      // load default system prompt
-      const loadDefaultPromptButton = document.getElementById(
-        "load-default-prompt"
-      );
-
-      loadDefaultPromptButton.addEventListener("click", async () => {
-        try {
-          const response = await fetch("/default_system_prompt");
-          const data = await response.json();
-          systemPromptInput.value = data.default_system_prompt;
-        } catch (error) {
-          console.error("Error loading default system prompt:", error);
-          addMessage({
-            id: Date.now().toString(),
-            content: error.message,
-            sender: "System",
-            timestamp: null,
-          });
-        }
-      });
-
       // conversation system scripts
       const conversationList = document.getElementById("conversation-list");
 
@@ -2198,6 +2105,23 @@
         }
       }
 
+      // Modals
+
+      function showModal(modal) {
+        modal.style.display = "block";
+        modal.querySelector(".modal-content").classList.remove("closing");
+      }
+
+      function hideModal(modal) {
+        const modalContent = modal.querySelector(".modal-content");
+        modalContent.classList.add("closing");
+        modalContent.addEventListener("animationend", function handler() {
+          modal.style.display = "none";
+          modalContent.classList.remove("closing");
+          modalContent.removeEventListener("animationend", handler);
+        });
+      }
+
       // Model Modal (try to say that fast 5 times)
       const addModelButton = document.getElementById("add-model-button");
 
@@ -2218,8 +2142,12 @@
       // );
 
       addModelButton.addEventListener("click", () => {
-        addModelModal.style.display = "block";
+        showModal(addModelModal);
         loadModelsFolderPath();
+      });
+
+      closeAddModelModal.addEventListener("click", () => {
+        hideModal(addModelModal);
       });
 
       openFolderButtons.forEach((button) => {
@@ -2230,10 +2158,6 @@
             console.error("Error opening models folder:", error);
           }
         });
-      });
-
-      closeAddModelModal.addEventListener("click", () => {
-        addModelModal.style.display = "none";
       });
 
       async function loadModelsFolderPath() {
@@ -2254,36 +2178,103 @@
         }
       }
 
-      // downloadModelButton.addEventListener("click", async () => {
-      //   const url = modelUrlInput.value.trim();
-      //   if (!url) {
-      //     alert("Please enter a valid URL");
-      //     return;
-      //   }
-      //   if (!url.endsWith(".gguf")) {
-      //     alert("Please use only .gguf file format");
-      //     return;
-      //   }
+      //system prompt modal
+      const systemPromptButton = document.getElementById(
+        "system-prompt-button"
+      );
+      const systemPromptModal = document.getElementById("system-prompt-modal");
+      const systemPromptInput = document.getElementById("system-prompt-input");
+      const saveSystemPromptButton =
+        document.getElementById("save-system-prompt");
+      const closeSystemPromptModal = document.getElementById(
+        "close-system-prompt-modal"
+      );
 
-      //   try {
-      //     const response = await fetch("/download_model", {
-      //       method: "POST",
-      //       headers: { "Content-Type": "application/json" },
-      //       body: JSON.stringify({ url: url }),
-      //     });
-      //     const data = await response.json();
-      //     if (data.success) {
-      //       alert("Model downloaded successfully");
-      //       modelUrlInput.value = "";
-      //       loadModels(); // Refresh the model list
-      //     } else {
-      //       alert("Error downloading model: " + data.error);
-      //     }
-      //   } catch (error) {
-      //     console.error("Error downloading model:", error);
-      //     alert("Error downloading model.");
-      //   }
-      // });
+      let currentSystemPrompt = "";
+
+      async function loadSystemPrompt() {
+        try {
+          const response = await fetch("/system_prompt");
+          const data = await response.json();
+          currentSystemPrompt = data.system_prompt;
+          systemPromptInput.value = currentSystemPrompt;
+        } catch (error) {
+          console.error("Error loading system prompt:", error);
+          addMessage({
+            id: Date.now().toString(),
+            content: error.message,
+            sender: "System",
+            timestamp: null,
+          });
+        }
+      }
+
+      systemPromptButton.addEventListener("click", () => {
+        showModal(systemPromptModal);
+      });
+
+      closeSystemPromptModal.addEventListener("click", () => {
+        hideModal(systemPromptModal);
+      });
+
+      saveSystemPromptButton.addEventListener("click", async () => {
+        const newSystemPrompt = systemPromptInput.value.trim();
+
+        fetch("/set_system_prompt", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ system_prompt: newSystemPrompt }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              console.log("System prompt updated successfully");
+              // Optionally, you can update the UI to reflect the change
+              // systemPromptInput.value = data.system_prompt;
+              systemPromptModal.style.display = "none";
+              addMessage({
+                id: Date.now().toString(),
+                content: "System prompt updated",
+                sender: "System",
+                timestamp: null,
+              });
+            } else {
+              console.error("Failed to update system prompt:", data.error);
+            }
+          })
+          .catch((error) => {
+            console.error("Error updating system prompt:", error);
+            addMessage({
+              id: Date.now().toString(),
+              content: "Error updating system prompt:" + error.message,
+              sender: "System",
+              timestamp: null,
+            });
+          });
+      });
+
+      // load default system prompt
+      const loadDefaultPromptButton = document.getElementById(
+        "load-default-prompt"
+      );
+
+      loadDefaultPromptButton.addEventListener("click", async () => {
+        try {
+          const response = await fetch("/default_system_prompt");
+          const data = await response.json();
+          systemPromptInput.value = data.default_system_prompt;
+        } catch (error) {
+          console.error("Error loading default system prompt:", error);
+          addMessage({
+            id: Date.now().toString(),
+            content: error.message,
+            sender: "System",
+            timestamp: null,
+          });
+        }
+      });
 
       // Initialize the chat interface
       loadModels();
