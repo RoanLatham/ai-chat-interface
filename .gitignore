@@ -4,3 +4,4 @@ conversations/
 __pycache__/
 app.log
 GitIgnore/
+ai_modelsa/
