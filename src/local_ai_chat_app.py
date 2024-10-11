@@ -259,9 +259,21 @@ def generate_final_response(model, history: str, internal_thought: str):
 def load_model(model_name):
     global current_model, current_model_name
     if current_model_name != model_name:
-        selected_model_path = os.path.join(MODELS_DIR, model_name)
-        # Convert backslashes to forward slashes and ensure it starts with "./"
-        selected_model_path = "./" + selected_model_path.replace("\\", "/")
+        # Find the .gguf file that matches the model name
+        model_files = [f for f in os.listdir(MODELS_DIR) if f.endswith('.gguf') and f.startswith(model_name)]
+        
+        if not model_files:
+            raise ValueError(f"No .gguf file found for model: {model_name}")
+        
+        if len(model_files) > 1:
+            app_logger.warning(f"Multiple .gguf files found for model {model_name}. Using the first one.")
+        
+        selected_model_file = model_files[0]
+        selected_model_path = os.path.join(MODELS_DIR, selected_model_file)
+        
+        # Ensure the path uses forward slashes
+        selected_model_path = selected_model_path.replace("\\", "/")
+        
         app_logger.info(f"Loading model: {selected_model_path}")
         current_model = Llama(model_path=selected_model_path, n_ctx=4096, n_threads=8, seed=42, f16_kv=True, use_mlock=True)
         current_model_name = model_name
