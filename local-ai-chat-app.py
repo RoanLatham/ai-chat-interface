@@ -37,10 +37,9 @@ app.logger.handlers = []
 app.logger.propagate = False
 
 # Directory containing AI models
-MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ai_models")
-
+MODELS_DIR = "ai_models"
 # Directory containing AI conversations
-CONVERSATIONS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "conversations")
+CONVERSATIONS_DIR = ".\conversations"
 
 current_model = None 
 current_model_name = None
@@ -50,8 +49,7 @@ current_conversation = None
 NAMING_PROMPT = """Based on the user's first message, generate a short, concise title for this conversation. The title should be no more than 5 words long and should capture the essence of the topic or query. if the message is vague or doesn't describe a definitive topic, try to include words form the users message in the title, if that still doesn't work, use a more general title. Respond with only the title, nothing else."""
 
 def load_system_prompt():
-    prompt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'system-prompt.txt')
-    with open(prompt_path, 'r') as file:
+    with open('system-prompt.txt', 'r') as file:
         return file.read().strip()
 
 SUPER_SYSTEM_PROMPT = load_system_prompt()
@@ -284,7 +282,7 @@ def get_available_models():
 
 @app.route('/')
 def index():
-    return send_from_directory('static', 'chat-interface.html')
+    return send_from_directory('.', 'chat-interface.html')
 
 @app.route('/models')
 def models():

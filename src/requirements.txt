@@ -1,3 +1,0 @@
-flask
-pywebview
-llama-cpp-python
