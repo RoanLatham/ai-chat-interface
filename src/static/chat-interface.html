@@ -176,7 +176,7 @@
         border-radius: 20px;
         animation: fadeInUp 0.3s ease-out;
         max-width: var(--message-max-width);
-        max-width: 70%;
+        overflow-x: auto;
       }
 
       /* this is to prevent the last element from having extra margin */
@@ -342,6 +342,8 @@
 
       .message p {
         margin-bottom: 1em;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
       }
 
       /* Style for horizontal rule */
@@ -568,6 +570,7 @@
         flex-direction: column;
         flex-grow: 1;
         height: 100%;
+        overflow-x: hidden;
       }
 
       .conversation-item {
