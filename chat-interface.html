@@ -1786,7 +1786,9 @@
             removeTypingIndicator();
             addMessage({
               id: Date.now().toString(),
-              content: "An error occurred while processing your request.",
+              content:
+                "An error occurred while processing your request: " +
+                error.message,
               sender: "System",
               timestamp: new Date().toISOString(),
             });
@@ -1936,10 +1938,10 @@
             selectModel(data.models[0]);
           }
         } catch (error) {
-          console.error("Error loading models:", error);
+          console.error("Error loading conversation:", error);
           addMessage({
             id: Date.now().toString(),
-            content: error.message,
+            content: "Error loading conversation:" + error.message,
             sender: "System",
             timestamp: null,
           });
@@ -2072,7 +2074,7 @@
           console.error("Error clearing conversation:", error);
           addMessage({
             id: Date.now().toString(),
-            content: error.message,
+            content: "Error clearing conversation:" + error.message,
             sender: "System",
             timestamp: null,
           });
@@ -2157,7 +2159,7 @@
           console.error("Error loading conversations:", error);
           addMessage({
             id: Date.now().toString(),
-            content: error.message,
+            content: "Error loading conversations:" + error.message,
             sender: "System",
             timestamp: null,
           });
@@ -2195,7 +2197,7 @@
           console.error("Error deleting conversation:", error);
           addMessage({
             id: Date.now().toString(),
-            content: error.message,
+            content: "Error deleting conversation:" + error.message,
             sender: "System",
             timestamp: null,
           });
@@ -2222,7 +2224,7 @@
           console.error("Error loading current conversation:", error);
           addMessage({
             id: Date.now().toString(),
-            content: error.message,
+            content: "Error loading current conversation:" + error.message,
             sender: "System",
             timestamp: null,
           });
@@ -2326,7 +2328,7 @@
           console.error("Error loading system prompt:", error);
           addMessage({
             id: Date.now().toString(),
-            content: error.message,
+            content: "Error loading system prompt:" + error.message,
             sender: "System",
             timestamp: null,
           });
@@ -2393,7 +2395,7 @@
           console.error("Error loading default system prompt:", error);
           addMessage({
             id: Date.now().toString(),
-            content: error.message,
+            content: "Error loading default system prompt:" + error.message,
             sender: "System",
             timestamp: null,
           });
