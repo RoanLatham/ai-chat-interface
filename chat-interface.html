@@ -1658,6 +1658,9 @@
           });
       }
 
+      // let firstMessageTimer;
+      let isFirstMessage = true;
+
       async function sendMessage() {
         if (isWaitingForResponse) return;
         const message = userInput.value.trim();
@@ -1691,6 +1694,7 @@
 
               if (humanData.status === "creating_conversation") {
                 showLoadingMessage("Creating new conversation...");
+                isFirstMessage = true;
               } else if (humanData.status === "loading_model") {
                 showLoadingMessage("Loading AI model...");
               } else if (humanData.status === "complete") {
@@ -1729,8 +1733,14 @@
               } else if (aiData.status === "generating") {
                 removeLoadingMessage();
                 showTypingIndicator();
+                if (isFirstMessage) {
+                  startFirstMessageTimer();
+                  isFirstMessage = false;
+                }
               } else if (aiData.status === "complete") {
+                clearFirstMessageTimer();
                 removeTypingIndicator();
+                removeLoadingMessage();
                 addMessage({
                   id: aiData.node_id,
                   content: aiData.response,
@@ -1750,9 +1760,26 @@
               timestamp: new Date().toISOString(),
             });
           } finally {
+            clearFirstMessageTimer();
             removeTypingIndicator();
+            removeLoadingMessage();
             setWaitingState(false);
           }
+        }
+      }
+
+      function startFirstMessageTimer() {
+        firstMessageTimer = setTimeout(() => {
+          showLoadingMessage(
+            "The first message in a conversation may take longer to generate. Please be patient..."
+          );
+        }, 10000); // Show this message after 10 seconds
+      }
+
+      function clearFirstMessageTimer() {
+        if (firstMessageTimer) {
+          clearTimeout(firstMessageTimer);
+          firstMessageTimer = null;
         }
       }
 
