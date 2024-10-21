@@ -298,14 +298,11 @@ def models():
 @app.route('/conversations', methods=['GET'])
 def get_conversations():
     conversations = load_all_conversations(CONVERSATIONS_DIR)
-    return jsonify([
-        {
-            'id': conv.id,
-            'name': conv.name,
-            'timestamp': conv.latest_message_timestamp.isoformat() if conv.latest_message_timestamp else None
-        }
-        for conv in conversations
-    ])
+    return jsonify([{
+        'id': conv.id,
+        'name': conv.name,
+        'latest_message_timestamp': conv.latest_message_timestamp.isoformat() if conv.latest_message_timestamp else None
+    } for conv in conversations])
 
 @app.route('/conversation/switch', methods=['POST'])
 def switch_conversation():

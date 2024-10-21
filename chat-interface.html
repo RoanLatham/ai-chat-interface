@@ -562,6 +562,9 @@
         border-radius: 10px;
         overflow-y: auto;
         height: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
       }
 
       #chat-area {
@@ -580,7 +583,6 @@
         padding: 12px 15px;
         background-color: var(--conversation-bg);
         border-radius: 8px;
-        margin-bottom: 10px;
         transition: background-color 0.3s ease;
         transition: transform 0.3s ease;
       }
@@ -593,6 +595,22 @@
       .conversation-item.active {
         background-color: var(--primary-color);
         transform: scale(1.01);
+      }
+
+      .conversation-date-separator {
+        font-weight: bold;
+        font-size: 0.9em;
+        color: var(--subtle-text-color);
+        width: 100%;
+      }
+
+      /* adjust separator spacing so its closer to the next conversation item */
+      .conversation-date-separator {
+        margin-bottom: 5px;
+      }
+
+      .conversation-date-separator + * {
+        margin-top: -10px;
       }
 
       .conversation-name {
@@ -672,7 +690,7 @@
         padding: 12px 15px;
         border-radius: 8px;
         cursor: pointer;
-        margin-bottom: 15px;
+        margin-bottom: 5px;
         width: 100%;
         transition: background-color 0.3s ease;
         font-family: inherit;
@@ -1196,7 +1214,7 @@
           console.error("Error loading conversation:", error);
           addMessage({
             id: Date.now().toString(),
-            content: error.message,
+            content: "Error loading conversation:" + error.message,
             sender: "System",
             timestamp: null,
           });
@@ -2061,16 +2079,74 @@
         }
       }
 
+      function groupConversationsByDate(conversations) {
+        const groups = {};
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        conversations.forEach((conv) => {
+          console.log("Conversation:", conv); // Debug log
+          if (conv.latest_message_timestamp) {
+            const date = new Date(conv.latest_message_timestamp);
+            console.log("Parsed date:", date); // Debug log
+            let key;
+
+            if (date.toDateString() === today.toDateString()) {
+              key = "Today";
+            } else if (date.toDateString() === yesterday.toDateString()) {
+              key = "Yesterday";
+            } else if (
+              today.getTime() - date.getTime() <
+              7 * 24 * 60 * 60 * 1000
+            ) {
+              key = date.toLocaleDateString("en-US", { weekday: "long" });
+            } else {
+              key = date.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              });
+            }
+
+            if (!groups[key]) {
+              groups[key] = [];
+            }
+            groups[key].push(conv);
+          } else {
+            console.log("No timestamp for conversation:", conv.id); // Debug log
+            if (!groups["No date"]) {
+              groups["No date"] = [];
+            }
+            groups["No date"].push(conv);
+          }
+        });
+
+        console.log("Grouped conversations:", groups); // Debug log
+        return groups;
+      }
+
       async function loadConversations() {
         try {
           const response = await fetch("/conversations");
           const conversations = await response.json();
+          const groupedConversations = groupConversationsByDate(conversations);
+
+          const conversationList = document.getElementById("conversation-list");
           const newChatButton =
             conversationList.querySelector("#new-chat-button");
           conversationList.innerHTML = "";
           conversationList.appendChild(newChatButton);
-          conversations.forEach((conv) => {
-            conversationList.appendChild(createConversationItem(conv));
+
+          Object.entries(groupedConversations).forEach(([date, convs]) => {
+            const dateElement = document.createElement("div");
+            dateElement.classList.add("conversation-date-separator");
+            dateElement.textContent = date;
+            conversationList.appendChild(dateElement);
+
+            convs.forEach((conv) => {
+              conversationList.appendChild(createConversationItem(conv));
+            });
           });
 
           // disable conversion entries if necessary
