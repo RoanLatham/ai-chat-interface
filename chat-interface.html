@@ -2001,6 +2001,11 @@
           finishEditingConversationName(item, input, textElement);
         });
 
+        // Stop propagation of the click event to the parent elements
+        input.addEventListener("click", (e) => {
+          e.stopPropagation();
+        });
+
         item.replaceChild(input, textElement);
         input.focus();
       }
