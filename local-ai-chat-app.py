@@ -568,8 +568,14 @@ def open_models_folder():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/icon/<path:filename>')
+def serve_icon(filename):
+    full_path = os.path.join(app.root_path, 'icon', filename)
+    app_logger.info(f"Requested icon file path: {full_path}")
+    return send_from_directory(os.path.join(app.root_path, 'icon'), filename)
 
 if __name__ == '__main__':
+    app_logger.info("Application started")
     os.makedirs(MODELS_DIR, exist_ok=True)
     os.makedirs(CONVERSATIONS_DIR, exist_ok=True)
     app.run(debug=True)
