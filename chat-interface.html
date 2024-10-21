@@ -1257,11 +1257,20 @@
       }
 
       function createModelNameElement(modelName) {
-        if (!modelName) return document.createDocumentFragment();
-        const modelElement = document.createElement("span");
-        modelElement.classList.add("model-name");
-        modelElement.textContent = ` • Model: ${modelName}`;
-        return modelElement;
+        const fragment = document.createDocumentFragment();
+
+        // Add a space character, to separate the model name from the previous element
+        const spaceElement = document.createTextNode("\u00A0");
+        fragment.appendChild(spaceElement);
+
+        if (modelName) {
+          const modelElement = document.createElement("span");
+          modelElement.classList.add("model-name");
+          modelElement.textContent = `• Model: ${modelName}`;
+          fragment.appendChild(modelElement);
+        }
+
+        return fragment;
       }
 
       function createEditIcon(messageContainer) {
