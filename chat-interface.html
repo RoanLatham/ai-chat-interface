@@ -659,6 +659,8 @@
         resize: none;
         align-self: center;
         overflow-y: scroll;
+        margin: 0;
+        height: 100%;
       }
 
       .new-chat-button {
@@ -1985,7 +1987,7 @@
         input.classList.add("conversation-name", "edit-conversation-input");
         input.value = textElement.textContent;
         // input.rows = 1;
-        input.style.height = `${textElement.offsetHeight}px`;
+        // input.style.height = `${textElement.offsetHeight}px`;
         input.style.width = `${textElement.offsetWidth}px`;
 
         input.addEventListener("keydown", (e) => {
