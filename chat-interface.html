@@ -1592,6 +1592,7 @@
       async function regenerateResponse(messageContainer) {
         const nodeId = messageContainer.dataset.nodeId;
         messageContainer.innerHTML = "";
+        setWaitingState(true);
 
         try {
           const response = await fetch("/message/regenerate", {
@@ -1619,6 +1620,7 @@
               showTypingIndicator();
             } else if (data.status === "complete") {
               removeTypingIndicator();
+              setWaitingState(false);
               addMessage({
                 id: data.node_id,
                 content: data.response,
@@ -1631,6 +1633,7 @@
         } catch (error) {
           console.error("Error regenerating response:", error);
           removeTypingIndicator();
+          setWaitingState(false);
           addMessage({
             id: Date.now().toString(),
             content: "Error regenerating response: " + error.message,
