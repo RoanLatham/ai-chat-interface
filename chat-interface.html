@@ -1199,7 +1199,7 @@
 
       async function loadConversation(conversationId) {
         try {
-          const response = await fetch(`/conversation/switch`, {
+          const response = await fetch(`/conversations/switch`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: conversationId }),
@@ -1346,7 +1346,7 @@
       async function copyMessage(messageContainer) {
         const nodeId = messageContainer.dataset.nodeId;
         try {
-          const response = await fetch("/get_original_content", {
+          const response = await fetch("/message/get_original_content", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ node_id: nodeId }),
@@ -1415,7 +1415,7 @@
         }
 
         try {
-          const response = await fetch("/get_siblings", {
+          const response = await fetch("/conversations/get_siblings", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ node_id: nodeId }),
@@ -1453,7 +1453,7 @@
         const originalWidth = messageElement.offsetWidth;
 
         try {
-          const response = await fetch("/get_original_content", {
+          const response = await fetch("/message/get_original_content", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ node_id: nodeId }),
@@ -1500,7 +1500,7 @@
 
               const newContent = textarea.value;
               try {
-                const editResponse = await fetch("/edit_message", {
+                const editResponse = await fetch("/message/edit", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -1518,14 +1518,17 @@
                   clearMessagesBelow(editData.new_node_id);
 
                   if (isHumanMessage) {
-                    const aiResponse = await fetch("/get_ai_response", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        conversation_id: currentConversationId,
-                        model: currentModel,
-                      }),
-                    });
+                    const aiResponse = await fetch(
+                      "/conversation/get_ai_response",
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          conversation_id: currentConversationId,
+                          model: currentModel,
+                        }),
+                      }
+                    );
 
                     const reader = aiResponse.body.getReader();
                     const decoder = new TextDecoder();
@@ -1591,7 +1594,7 @@
         messageContainer.innerHTML = "";
 
         try {
-          const response = await fetch("/regenerate_response", {
+          const response = await fetch("/message/regenerate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1653,7 +1656,7 @@
 
       async function navigateBranch(messageContainer, direction) {
         try {
-          const response = await fetch("/switch_branch", {
+          const response = await fetch("/conversation/switch_branch", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1704,7 +1707,7 @@
           try {
             console.log(currentModel);
             // First request: Add user message to conversation
-            const userResponse = await fetch("/add_user_message", {
+            const userResponse = await fetch("/conversation/add_user_message", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -1742,7 +1745,7 @@
               }
             }
 
-            const aiResponse = await fetch("/get_ai_response", {
+            const aiResponse = await fetch("/conversation/get_ai_response", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -2037,7 +2040,7 @@
 
         if (newName !== oldName) {
           try {
-            const response = await fetch("/rename_conversation", {
+            const response = await fetch("/conversation/rename", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -2216,7 +2219,7 @@
 
       async function loadCurrentConversation() {
         try {
-          const response = await fetch("/current_conversation");
+          const response = await fetch("/conversations/current");
           const data = await response.json();
           if (data.conversation_id) {
             loadConversation(data.conversation_id);
@@ -2280,7 +2283,7 @@
       openFolderButtons.forEach((button) => {
         button.addEventListener("click", async () => {
           try {
-            await fetch("/open_models_folder", { method: "POST" });
+            await fetch("/models/open_folder", { method: "POST" });
           } catch (error) {
             console.error("Error opening models folder:", error);
           }
@@ -2289,7 +2292,7 @@
 
       async function loadModelsFolderPath() {
         try {
-          const response = await fetch("/models_folder_path");
+          const response = await fetch("/models/folder_path");
           const data = await response.json();
           modelsFolderSpans.forEach((span) => {
             span.textContent = data.path;
@@ -2347,7 +2350,7 @@
       saveSystemPromptButton.addEventListener("click", async () => {
         const newSystemPrompt = systemPromptInput.value.trim();
 
-        fetch("/set_system_prompt", {
+        fetch("/system_prompt/set", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -2389,7 +2392,7 @@
 
       loadDefaultPromptButton.addEventListener("click", async () => {
         try {
-          const response = await fetch("/default_system_prompt");
+          const response = await fetch("/system_prompt/default");
           const data = await response.json();
           systemPromptInput.value = data.default_system_prompt;
         } catch (error) {

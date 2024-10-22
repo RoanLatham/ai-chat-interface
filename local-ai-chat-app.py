@@ -9,6 +9,7 @@ from llama_cpp import Llama
 from Conversation import Conversation, create_conversation, save_conversation, load_conversation, load_all_conversations, Node
 import json
 import time
+import subprocess
 
 # Configure custom logging
 app_logger = logging.getLogger('app')
@@ -48,6 +49,7 @@ current_conversation = None
 
 NAMING_PROMPT = """Based on the user's first message, generate a short, concise title for this conversation. The title should be no more than 5 words long and should capture the essence of the topic or query. if the message is vague or doesn't describe a definitive topic, try to include words form the users message in the title, if that still doesn't work, use a more general title. Respond with only the title, nothing else."""
 
+# Load system prompt from file
 def load_system_prompt():
     with open('system-prompt.txt', 'r') as file:
         return file.read().strip()
@@ -101,6 +103,7 @@ Format your thoughts clearly and concisely. This is for internal planning only a
 you will be provided with an opening <AI Internal Thought> tag, you must end your response with a closing response tag: </AI Internal Thought>
 """
 
+# Generate AI response for a given conversation, user message must already be added to conversation
 def generate_ai_response(conversation: Conversation, model_name: str, max_tokens: int = 300): #-> Generator[str, None, None]:
     global current_model, current_model_name
 
@@ -153,6 +156,7 @@ def generate_ai_response(conversation: Conversation, model_name: str, max_tokens
         else:
             yield json.dumps({"status": "error", "message": str(e)})
 
+# Prepare conversation history in GAtt format
 def prepare_gatt_history(conversation: Conversation, max_tokens: int = 300) -> str:
     start_time = time.time()
 
@@ -207,6 +211,7 @@ def prepare_gatt_history(conversation: Conversation, max_tokens: int = 300) -> s
     app_logger.info(f"Final history: {final_history}")
     return final_history
 
+# Reduce context when it exceeds the token limit
 def reduce_context(conversation: Conversation, error: ValueError, max_tokens: int) -> str:
     tokens_to_reduce = int(re.search(r'\((\d+)\)', str(error)).group(1))
     buffer = int(tokens_to_reduce * 1.5)  # Add 50% buffer
@@ -214,6 +219,7 @@ def reduce_context(conversation: Conversation, error: ValueError, max_tokens: in
     reduced_max_tokens = max(max_tokens - buffer, 500)  # Ensure we don't go below a minimum threshold
     return prepare_gatt_history(conversation, max_tokens=reduced_max_tokens)
 
+# Prepare full prompt including system prompts and conversation history
 def prepare_full_prompt(history: str, internal_thought: str = "") -> str:
     full_prompt = f"{SUPER_SYSTEM_PROMPT}\n\n"
     
@@ -231,29 +237,19 @@ def prepare_full_prompt(history: str, internal_thought: str = "") -> str:
 
     return full_prompt
 
-@app.route('/set_system_prompt', methods=['POST'])
-def set_system_prompt():
-    global current_system_prompt
-    data = request.json
-    new_system_prompt = data.get('system_prompt')
-    
-    if new_system_prompt is not None:
-        current_system_prompt = new_system_prompt
-        return jsonify({'success': True, 'system_prompt': current_system_prompt})
-    else:
-        return jsonify({'success': False, 'error': 'No system prompt provided'}), 400
-
+# Generate internal thought for AI response
 def generate_internal_thought(model, history: str):
     prompt = prepare_full_prompt(history) + f"\n\n{INTERNAL_THOUGHT_PROMPT}\n<AI Internal Thought>"
     response = model(prompt, max_tokens=500, stop=STOP_PHRASES)
     return response['choices'][0]['text'].strip()
 
+# Generate final AI response
 def generate_final_response(model, history: str, internal_thought: str):
     prompt = prepare_full_prompt(history, internal_thought)
     response = model(prompt, max_tokens=4096, stop=STOP_PHRASES)
     return response['choices'][0]['text'].strip()
 
-
+# Load AI model
 def load_model(model_name):
     global current_model, current_model_name
     if current_model_name != model_name:
@@ -277,13 +273,18 @@ def load_model(model_name):
         current_model_name = model_name
     return current_model
 
+# Get list of available AI models
 def get_available_models():
     return [f for f in os.listdir(MODELS_DIR) if f.endswith('.gguf')]
 
+# Serve the main HTML page
 @app.route('/')
 def index():
     return send_from_directory('.', 'chat-interface.html')
 
+## Model-related routes
+
+# Get available models and current model, current model is returned so the dropdown in the UI will auto-select it
 @app.route('/models')
 def models():
     available_models = get_available_models()
@@ -294,7 +295,28 @@ def models():
         "current_model": current_model_name
     })
 
+# Get the path to the models folder
+@app.route('/models/folder_path', methods=['GET'])
+def get_models_folder_path():
+    return jsonify({'path': os.path.abspath(MODELS_DIR)})
 
+# Open the models folder in the file explorer
+@app.route('/models/open_folder', methods=['POST'])
+def open_models_folder():
+    try:
+        if os.name == 'nt':  # Windows
+            os.startfile(MODELS_DIR)
+        elif os.name == 'posix':  # macOS and Linux
+            subprocess.call(['open', MODELS_DIR])
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+## Conversation-related routes
+# operations involving more than one conversation use /conversations for example getting a list of all conversations or switching between 2 conversations
+# operations involving one conversation, usually with a supplied conversation id from the client, use /conversation singular
+
+# Get all conversations
 @app.route('/conversations', methods=['GET'])
 def get_conversations():
     conversations = load_all_conversations(CONVERSATIONS_DIR)
@@ -304,7 +326,8 @@ def get_conversations():
         'latest_message_timestamp': conv.latest_message_timestamp.isoformat() if conv.latest_message_timestamp else None
     } for conv in conversations])
 
-@app.route('/conversation/switch', methods=['POST'])
+# Switch to a different conversation
+@app.route('/conversations/switch', methods=['POST'])
 def switch_conversation():
     global current_conversation
     conversation_id = request.json['id']
@@ -326,6 +349,7 @@ def switch_conversation():
         ]
     })
 
+# Delete a conversation
 @app.route('/conversation/delete', methods=['POST'])
 def delete_conversation():
     global current_conversation
@@ -343,6 +367,7 @@ def delete_conversation():
     except Exception as e:
         return jsonify({'error': f'Failed to delete conversation: {str(e)}'}), 500
 
+# Clear the current conversation variable, this does not effect the conversation itself
 @app.route('/conversation/clear', methods=['POST'])
 def clear_conversation():
     global current_conversation
@@ -351,7 +376,8 @@ def clear_conversation():
     current_conversation = None
     return jsonify({'success': True})
 
-@app.route('/rename_conversation', methods=['POST'])
+# Rename a conversation
+@app.route('/conversation/rename', methods=['POST'])
 def rename_conversation():
     data = request.json
     conversation_id = data['conversation_id']
@@ -365,7 +391,8 @@ def rename_conversation():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
-@app.route('/current_conversation', methods=['GET'])
+# Get the current conversation
+@app.route('/conversations/current', methods=['GET'])
 def get_current_conversation():
     if current_conversation:
         return jsonify({
@@ -384,7 +411,8 @@ def get_current_conversation():
     else:
         return jsonify({'conversation_id': None, 'conversation_name': None, 'branch': []})
 
-@app.route('/switch_branch', methods=['POST'])
+# Switch to a different branch in the conversation
+@app.route('/conversation/switch_branch', methods=['POST'])
 def switch_branch():
     data = request.json
     node_id = data['node_id']
@@ -421,7 +449,8 @@ def switch_branch():
     
     return jsonify({'success': False, 'error': 'No active conversation'}), 400
 
-@app.route('/add_user_message', methods=['POST'])
+# Add a user message to the conversation
+@app.route('/conversation/add_user_message', methods=['POST'])
 def add_user_message():
     global current_system_prompt, current_model, current_conversation, current_model_name
     data = request.json
@@ -461,7 +490,8 @@ def add_user_message():
     
     return Response(generate(user_input, model_name), mimetype='application/json')
 
-@app.route('/get_ai_response', methods=['POST'])
+# Get AI response for the current conversation
+@app.route('/conversation/get_ai_response', methods=['POST'])
 def get_ai_response():
     global current_conversation
     data = request.json
@@ -473,7 +503,8 @@ def get_ai_response():
     
     return Response(generate_ai_response(current_conversation, model_name), mimetype='application/json')
 
-@app.route('/regenerate_response', methods=['POST'])
+# Regenerate AI response for a specific message
+@app.route('/message/regenerate', methods=['POST'])
 def regenerate_response():
     data = request.json
     node_id = data['node_id']
@@ -487,7 +518,8 @@ def regenerate_response():
     
     return jsonify({'success': False, 'error': 'Failed to regenerate response'}), 400
 
-@app.route('/edit_message', methods=['POST'])
+# Edit a message in the conversation
+@app.route('/message/edit', methods=['POST'])
 def edit_message():
     data = request.json
     node_id = data['node_id']
@@ -507,7 +539,8 @@ def edit_message():
     
     return jsonify({'success': False, 'error': 'Failed to edit message'}), 400
 
-@app.route('/get_original_content', methods=['POST'])
+# Get the original content of a message, i.e. plain text instead of formatted markdown
+@app.route('/message/get_original_content', methods=['POST'])
 def get_original_content():
     data = request.json
     node_id = data['node_id']
@@ -523,7 +556,8 @@ def get_original_content():
     
     return jsonify({'success': False, 'error': 'Node not found'}), 404
 
-@app.route('/get_siblings', methods=['POST'])
+# Get sibling messages for a given node
+@app.route('/conversations/get_siblings', methods=['POST'])
 def get_siblings():
     data = request.json
     node_id = data['node_id']
@@ -544,30 +578,31 @@ def get_siblings():
     
     return jsonify({'siblings': []}), 400
 
+## System prompt routes
+# Get the current system prompt
 @app.route('/system_prompt', methods=['GET'])
 def get_system_prompt():
     return jsonify({'system_prompt': current_system_prompt})
 
-@app.route('/default_system_prompt', methods=['GET'])
+# Get the default system prompt
+@app.route('/system_prompt/default', methods=['GET'])
 def get_default_system_prompt():
     return jsonify({'default_system_prompt': DEFAULT_SYSTEM_PROMPT})
 
-@app.route('/models_folder_path', methods=['GET'])
-def get_models_folder_path():
-    return jsonify({'path': os.path.abspath(MODELS_DIR)})
+# Set a new system prompt
+@app.route('/system_prompt/set', methods=['POST'])
+def set_system_prompt():
+    global current_system_prompt
+    data = request.json
+    new_system_prompt = data.get('system_prompt')
+    
+    if new_system_prompt is not None:
+        current_system_prompt = new_system_prompt
+        return jsonify({'success': True, 'system_prompt': current_system_prompt})
+    else:
+        return jsonify({'success': False, 'error': 'No system prompt provided'}), 400
 
-@app.route('/open_models_folder', methods=['POST'])
-def open_models_folder():
-    import subprocess
-    try:
-        if os.name == 'nt':  # Windows
-            os.startfile(MODELS_DIR)
-        elif os.name == 'posix':  # macOS and Linux
-            subprocess.call(['open', MODELS_DIR])
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
+# Serve icon files
 @app.route('/icon/<path:filename>')
 def serve_icon(filename):
     full_path = os.path.join(app.root_path, 'icon', filename)
