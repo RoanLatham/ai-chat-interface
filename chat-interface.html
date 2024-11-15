@@ -49,6 +49,22 @@
 
         --max-width: 75vw;
 
+        /* Table Colors - AI Message */
+        --ai-table-border: #5be5e5;
+        --ai-table-header-bg: #5be5e5;
+        --ai-table-row-odd: #97f4f4;
+        --ai-table-row-even: #86f3f3;
+
+        /* Table Colors - Human Message */
+        --human-table-border: #5044bd;
+        --human-table-header-bg: #5044bd;
+        --human-table-row-odd: #8075eb;
+        --human-table-row-even: #726be9;
+
+        /* Shared Table Styles */
+        --table-border-radius: 10px;
+        --table-cell-padding: 8px 12px;
+
         /* scaling variables */
         --conversation-list-width: 25%;
         --message-font-size: 18px;
@@ -345,6 +361,121 @@
         margin-bottom: 1em;
         overflow-wrap: break-word;
         word-wrap: break-word;
+      }
+
+      /* Table Styles */
+      .message table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+        margin: 1em 0;
+        border-radius: var(--table-border-radius);
+        overflow: hidden;
+        border: 4px solid;
+      }
+
+      /* AI Message Tables */
+      .ai-message table {
+        border-color: var(--ai-table-border);
+        background-color: var(--ai-table-border);
+      }
+
+      .ai-message th {
+        background-color: var(--ai-table-header-bg);
+        color: var(--bg-color);
+      }
+
+      .ai-message tr:nth-child(odd) td {
+        background-color: var(--ai-table-row-odd);
+      }
+
+      .ai-message tr:nth-child(even) td {
+        background-color: var(--ai-table-row-even);
+      }
+
+      /* Human Message Tables */
+      .human-message table {
+        border-color: var(--human-table-border);
+        background-color: var(--human-table-border);
+      }
+
+      .human-message th {
+        background-color: var(--human-table-header-bg);
+        color: var(--text-color);
+      }
+
+      .human-message tr:nth-child(odd) td {
+        background-color: var(--human-table-row-odd);
+      }
+
+      .human-message tr:nth-child(even) td {
+        background-color: var(--human-table-row-even);
+      }
+
+      /* Shared Table Cell Styles */
+      .message th,
+      .message td {
+        padding: var(--table-cell-padding);
+        text-align: left;
+        border: 2px solid;
+      }
+
+      .message td {
+        border-radius: 6px;
+      }
+
+      .message th {
+        font-weight: bold;
+        text-transform: uppercase;
+        font-size: 0.9em;
+        letter-spacing: 0.05em;
+      }
+
+      /* AI Message Cell Borders */
+      .ai-message td,
+      .ai-message th {
+        border-color: var(--ai-table-border);
+      }
+
+      /* Human Message Cell Borders */
+      .human-message td,
+      .human-message th {
+        border-color: var(--human-table-border);
+      }
+
+      /* Table Hover Effects */
+      .message tr:hover td {
+        opacity: 0.9;
+        transition: opacity 0.2s ease;
+      }
+
+      /* Responsive Table Styles */
+      @media (max-width: 600px) {
+        .message table {
+          display: block;
+          overflow-x: auto;
+          white-space: nowrap;
+        }
+      }
+
+      /* silly outline and border radius fix */
+
+      /* First row header cells */
+      .message tr:first-child th:first-child {
+        border-top-left-radius: calc(var(--table-border-radius) - 2px);
+      }
+
+      .message tr:first-child th:last-child {
+        border-top-right-radius: calc(var(--table-border-radius) - 2px);
+      }
+
+      /* Last row cells */
+      .message tr:last-child td:first-child {
+        border-bottom-left-radius: calc(var(--table-border-radius) - 2px);
+      }
+
+      .message tr:last-child td:last-child {
+        border-bottom-right-radius: calc(var(--table-border-radius) - 2px);
       }
 
       /* Style for horizontal rule */
