@@ -104,7 +104,7 @@ you will be provided with an opening <AI Internal Thought> tag, you must end you
 """
 
 # Generate AI response for a given conversation, user message must already be added to conversation
-def generate_ai_response(conversation: Conversation, model_name: str, max_tokens: int = 300): #-> Generator[str, None, None]:
+def generate_ai_response(conversation: Conversation, model_name: str, max_context_tokens: int = 4096): #-> Generator[str, None, None]:
     global current_model, current_model_name
 
     if current_model is None or current_model_name != model_name:
@@ -115,15 +115,12 @@ def generate_ai_response(conversation: Conversation, model_name: str, max_tokens
     yield json.dumps({"status": "generating"})
 
     try:
-        # Prepare conversation history with GAtt formatting and limit to max_tokens
-        history = prepare_gatt_history(conversation, max_tokens=max_tokens)
-        
         # Generate internal thought
-        internal_thought = generate_internal_thought(current_model, history)
+        internal_thought = generate_internal_thought(current_model, conversation, max_context_tokens)
         app_logger.info(f"Generated internal thought: {internal_thought}")
         
         # Generate AI response
-        ai_response = generate_final_response(current_model, history, internal_thought)
+        ai_response = generate_final_response(current_model, conversation, internal_thought, max_context_tokens)
         app_logger.info(f"Generated AI response: {ai_response}")
 
         # Add the new message to the conversation
@@ -137,27 +134,17 @@ def generate_ai_response(conversation: Conversation, model_name: str, max_tokens
             "timestamp": ai_node.timestamp.isoformat()
         })
     except ValueError as e:
-        if "exceed context window" in str(e):
-            # Attempt to reduce context and retry once
-            reduced_history = reduce_context(conversation, e, max_tokens)
-            try:
-                internal_thought = generate_internal_thought(current_model, reduced_history)
-                ai_response = generate_final_response(current_model, reduced_history, internal_thought)
-                ai_node = conversation.add_message(ai_response, "AI", current_model_name, internal_thought)
-                save_conversation(conversation, CONVERSATIONS_DIR)
-                yield json.dumps({
-                    "status": "complete",
-                    "response": ai_response,
-                    "node_id": ai_node.id,
-                    "timestamp": ai_node.timestamp.isoformat()
-                })
-            except Exception:
-                yield json.dumps({"status": "error", "message": "Context too large even after reduction"})
-        else:
+            app_logger.warning(f"{str(e)}")
             yield json.dumps({"status": "error", "message": str(e)})
 
+def tokenize(text: str) -> List[int]:
+    return current_model.tokenize(text.encode('utf-8'))
+
+def count_tokens(text: str) -> int:
+    return len(tokenize(text))
+
 # Prepare conversation history in GAtt format
-def prepare_gatt_history(conversation: Conversation, max_tokens: int = 300) -> str:
+def prepare_gatt_history(conversation: Conversation, max_context_tokens: int = 2048) -> str:
     start_time = time.time()
 
     def format_node(node: Node) -> str:
@@ -166,12 +153,6 @@ def prepare_gatt_history(conversation: Conversation, max_tokens: int = 300) -> s
         else:
             internal_thought = f"<AI Internal Thought>{node.internal_monologue}</AI Internal Thought>\n" if node.internal_monologue else ""
             return f"{internal_thought}<AI Response>{node.content}</AI Response>\n\n"
-
-    def tokenize(text: str) -> List[int]:
-        return current_model.tokenize(text.encode('utf-8'))
-
-    def count_tokens(text: str) -> int:
-        return len(tokenize(text))
 
     branch = conversation.get_current_branch()
     
@@ -193,7 +174,7 @@ def prepare_gatt_history(conversation: Conversation, max_tokens: int = 300) -> s
         formatted_node = format_node(node)
         node_tokens = count_tokens(formatted_node)
         
-        if current_tokens + node_tokens + omission_tokens <= max_tokens:
+        if current_tokens + node_tokens + omission_tokens <= max_context_tokens:
             remaining_history.insert(0, formatted_node)
             current_tokens += node_tokens
         else:
@@ -204,6 +185,11 @@ def prepare_gatt_history(conversation: Conversation, max_tokens: int = 300) -> s
     # Combine the parts
     final_history = f"{guaranteed_history}\n" + "\n".join(remaining_history)
 
+    # Final check to ensure we're within limits
+    final_tokens = count_tokens(final_history)
+    if final_tokens > max_context_tokens:
+        raise ValueError(f"Failed to reduce context: Final context ({final_tokens} tokens) exceeds maximum allowed ({max_context_tokens} tokens)")
+
     end_time = time.time()
     execution_time = end_time - start_time
     app_logger.info(f"Prepared conversation history with ~{current_tokens} tokens in {execution_time:.4f} seconds")
@@ -211,16 +197,8 @@ def prepare_gatt_history(conversation: Conversation, max_tokens: int = 300) -> s
     app_logger.info(f"Final history: {final_history}")
     return final_history
 
-# Reduce context when it exceeds the token limit
-def reduce_context(conversation: Conversation, error: ValueError, max_tokens: int) -> str:
-    tokens_to_reduce = int(re.search(r'\((\d+)\)', str(error)).group(1))
-    buffer = int(tokens_to_reduce * 1.5)  # Add 50% buffer
-    
-    reduced_max_tokens = max(max_tokens - buffer, 500)  # Ensure we don't go below a minimum threshold
-    return prepare_gatt_history(conversation, max_tokens=reduced_max_tokens)
-
 # Prepare full prompt including system prompts and conversation history
-def prepare_full_prompt(history: str, internal_thought: str = "") -> str:
+def prepare_full_prompt(history: str, internal_thought: str = "", max_context_tokens: int = 2048) -> str:
     full_prompt = f"{SUPER_SYSTEM_PROMPT}\n\n"
     
     if current_system_prompt and current_system_prompt != DEFAULT_SYSTEM_PROMPT:
@@ -232,20 +210,29 @@ def prepare_full_prompt(history: str, internal_thought: str = "") -> str:
         full_prompt += f"<AI Internal Thought>{internal_thought}\n\n"
     
     full_prompt += "<AI Response>"
+
+    # Final check to ensure we're within limits
+    final_tokens = count_tokens(full_prompt)
+    if final_tokens > max_context_tokens:
+        raise ValueError(f"Failed to reduce context: Final context ({final_tokens} tokens) exceeds maximum allowed ({max_context_tokens} tokens)")
     
     logger.info(f"Prepared full prompt: {full_prompt}")
 
     return full_prompt
 
 # Generate internal thought for AI response
-def generate_internal_thought(model, history: str):
-    prompt = prepare_full_prompt(history) + f"\n\n{INTERNAL_THOUGHT_PROMPT}\n<AI Internal Thought>"
+def generate_internal_thought(model, conversation, max_context_tokens: int = 2048):
+    # Prepare conversation history with GAtt formatting and limit to max_tokens
+    history = prepare_gatt_history(conversation, max_context_tokens)
+    prompt = prepare_full_prompt(history, max_context_tokens=max_context_tokens) + f"\n\n{INTERNAL_THOUGHT_PROMPT}\n<AI Internal Thought>"
     response = model(prompt, max_tokens=500, stop=STOP_PHRASES)
     return response['choices'][0]['text'].strip()
 
 # Generate final AI response
-def generate_final_response(model, history: str, internal_thought: str):
-    prompt = prepare_full_prompt(history, internal_thought)
+def generate_final_response(model, conversation, internal_thought: str, max_context_tokens: int = 2048):
+    # Prepare conversation history with GAtt formatting and limit to max_tokens
+    history = prepare_gatt_history(conversation, max_context_tokens)
+    prompt = prepare_full_prompt(history, internal_thought, max_context_tokens)
     response = model(prompt, max_tokens=4096, stop=STOP_PHRASES)
     return response['choices'][0]['text'].strip()
 
