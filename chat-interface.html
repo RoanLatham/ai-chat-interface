@@ -1917,6 +1917,9 @@
                   timestamp: aiData.timestamp,
                   model_name: currentModel,
                 });
+              } else if (aiData.status === "error")
+              {
+                throw new Error(aiData.message);
               }
             }
           } catch (error) {
