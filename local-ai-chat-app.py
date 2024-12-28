@@ -15,15 +15,20 @@ from dataclasses import dataclass
 # Configure custom logging
 app_logger = logging.getLogger('app')
 app_logger.setLevel(logging.INFO)
+
+# File handler
 file_handler = RotatingFileHandler('app.log', maxBytes=10000000, backupCount=5)
 file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 app_logger.addHandler(file_handler)
 
+# Console handler for app_logger
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+app_logger.addHandler(console_handler)
+
 # Configure Flask logging
 werkzeug_logger = logging.getLogger('werkzeug')
 werkzeug_logger.setLevel(logging.INFO)
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 werkzeug_logger.addHandler(console_handler)
 
 # Remove default handlers from the root logger
