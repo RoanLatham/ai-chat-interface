@@ -124,27 +124,40 @@ class TokenLimits:
 
 # Generate AI response for a given conversation, user message must already be added to conversation
 def generate_ai_response(conversation: Conversation, model_name: str, token_limits: TokenLimits = TokenLimits(4096)): #-> Generator[str, None, None]:
+    start_time = time.time()
     global current_model, current_model_name
 
     if current_model is None or current_model_name != model_name:
         yield json.dumps({"status": "loading_model"})
+        model_load_start = time.time()
         current_model = load_model(model_name)
         current_model_name = model_name
+        app_logger.info(f"Model loading took {time.time() - model_load_start:.4f} seconds")
 
     yield json.dumps({"status": "generating"})
 
     try:
         # Generate internal thought
+        thought_start = time.time()
         internal_thought = generate_internal_thought(current_model, conversation, token_limits)
-        app_logger.info(f"Generated internal thought: {internal_thought}")
+        thought_time = time.time() - thought_start
+        app_logger.info(f"Internal thought generation took {thought_time:.4f} seconds")
         
         # Generate AI response
+        response_start = time.time()
         ai_response = generate_final_response(current_model, conversation, internal_thought, token_limits)
-        app_logger.info(f"Generated AI response: {ai_response}")
+        response_time = time.time() - response_start
+        app_logger.info(f"Final response generation took {response_time:.4f} seconds")
 
         # Add the new message to the conversation
+        save_start = time.time()
         ai_node = conversation.add_message(ai_response, "AI", current_model_name, internal_thought)
         save_conversation(conversation, CONVERSATIONS_DIR)
+        save_time = time.time() - save_start
+        app_logger.info(f"Saving conversation took {save_time:.4f} seconds")
+        
+        total_time = time.time() - start_time
+        app_logger.info(f"Total AI response generation took {total_time:.4f} seconds")
         
         yield json.dumps({
             "status": "complete",
@@ -153,8 +166,8 @@ def generate_ai_response(conversation: Conversation, model_name: str, token_limi
             "timestamp": ai_node.timestamp.isoformat()
         })
     except ValueError as e:
-            app_logger.warning(f"{str(e)}")
-            yield json.dumps({"status": "error", "message": str(e)})
+        app_logger.warning(f"{str(e)}")
+        yield json.dumps({"status": "error", "message": str(e)})
 
 def tokenize(text: str) -> List[int]:
     return current_model.tokenize(text.encode('utf-8'))
@@ -242,24 +255,40 @@ def prepare_full_prompt(history: str, token_limits: TokenLimits, internal_though
 
 # Generate internal thought for AI response
 def generate_internal_thought(model, conversation, token_limits: TokenLimits):
-    # Prepare conversation history with GAtt formatting and limit to max_tokens
+    history_start = time.time()
     history = prepare_gatt_history(conversation, token_limits)
     prompt = prepare_full_prompt(history, token_limits=token_limits) + f"\n\n{INTERNAL_THOUGHT_PROMPT}\n<AI Internal Thought>"
+    app_logger.info(f"Internal thought prompt preparation took {time.time() - history_start:.4f} seconds")
+    
+    inference_start = time.time()
     response = model(prompt, max_tokens=500, stop=STOP_PHRASES)
+    app_logger.info(f"Internal thought inference took {time.time() - inference_start:.4f} seconds")
     return response['choices'][0]['text'].strip()
 
 # Generate final AI response
 def generate_final_response(model, conversation, internal_thought: str, token_limits: TokenLimits):
-    # Prepare conversation history with GAtt formatting and limit to max_tokens
+    history_start = time.time()
     history = prepare_gatt_history(conversation, token_limits)
     prompt = prepare_full_prompt(history, token_limits, internal_thought)
+    app_logger.info(f"Final response prompt preparation took {time.time() - history_start:.4f} seconds")
+    
+    inference_start = time.time()
     response = model(prompt, max_tokens=4096, stop=STOP_PHRASES)
+    app_logger.info(f"Final response inference took {time.time() - inference_start:.4f} seconds")
     return response['choices'][0]['text'].strip()
 
 # Load AI model
 def load_model(model_name):
     global current_model, current_model_name
     if current_model_name != model_name:
+        if not hasattr(load_model, 'model_cache'):
+            load_model.model_cache = {}
+            
+        if model_name in load_model.model_cache:
+            current_model = load_model.model_cache[model_name]
+            current_model_name = model_name
+            return current_model
+            
         # Find the .gguf file that matches the model name
         model_files = [f for f in os.listdir(MODELS_DIR) if f.endswith('.gguf') and f.startswith(model_name)]
         
@@ -278,6 +307,7 @@ def load_model(model_name):
         app_logger.info(f"Loading model: {selected_model_path}")
         current_model = Llama(model_path=selected_model_path, n_ctx=4096, n_threads=8, seed=42, f16_kv=True, use_mlock=True)
         current_model_name = model_name
+        load_model.model_cache[model_name] = current_model
     return current_model
 
 # Get list of available AI models
@@ -459,6 +489,7 @@ def switch_branch():
 # Add a user message to the conversation
 @app.route('/conversation/add_user_message', methods=['POST'])
 def add_user_message():
+    request_start = time.time()
     global current_system_prompt, current_model, current_conversation, current_model_name
     data = request.json
     user_input = data['message']
@@ -471,21 +502,27 @@ def add_user_message():
         
         if current_model is None or current_model_name != model_name:
             yield json.dumps({"status": "loading_model"})
-            print(f"Loading model: {model_name}")
+            model_load_start = time.time()
             current_model = load_model(model_name)
             current_model_name = model_name
+            app_logger.info(f"Model loading took {time.time() - model_load_start:.4f} seconds")
         
         if current_conversation is None:
             yield json.dumps({"status": "creating_conversation"})
-            print("Creating new conversation")
+            naming_start = time.time()
             naming_prompt = f"{NAMING_PROMPT}\n\nUser's message: {user_input}\n\nTitle:"
             naming_response = current_model(naming_prompt, max_tokens=10, stop=["\n"], temperature=0.7)
             conversation_name = naming_response['choices'][0]['text'].strip()
             current_conversation = create_conversation(conversation_name)
-            
+            app_logger.info(f"Conversation creation and naming took {time.time() - naming_start:.4f} seconds")
         
+        save_start = time.time()
         new_node = current_conversation.add_message(user_input, "Human")
         save_conversation(current_conversation, CONVERSATIONS_DIR)
+        app_logger.info(f"Saving user message took {time.time() - save_start:.4f} seconds")
+        
+        total_time = time.time() - request_start
+        app_logger.info(f"Total user message processing took {total_time:.4f} seconds")
         
         yield json.dumps({
             "status": "complete",
