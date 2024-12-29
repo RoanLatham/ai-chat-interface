@@ -1,54 +1,88 @@
-import sys
-import logging
 import os
-import urllib.request
+import sys
+import venv
 import subprocess
-import tempfile
-import shutil
+import logging
 from pathlib import Path
-from importlib import import_module, util
 
 logger = logging.getLogger(__name__)
 
-def download_wheel(package_name, target_dir):
-    """Download a wheel file for the given package"""
-    url = f"https://pypi.org/pypi/{package_name}/json"
-    
-    try:
-        with urllib.request.urlopen(url) as response:
-            import json
-            data = json.loads(response.read())
+class VenvInstaller:
+    def __init__(self, base_dir):
+        self.base_dir = Path(base_dir)
+        self.venv_dir = self.base_dir / 'venv'
+        
+        # Get system Python path instead of using sys.executable
+        self.system_python = self._get_system_python()
+        if not self.system_python:
+            raise RuntimeError("Could not find Python installation on system")
             
-            # Get the latest version's wheel URL
-            for url in data['urls']:
-                if url['packagetype'] == 'bdist_wheel':
-                    wheel_url = url['url']
-                    wheel_name = url['filename']
-                    wheel_path = os.path.join(target_dir, wheel_name)
-                    
-                    logger.info(f"Downloading {wheel_name}...")
-                    print(f"Downloading {wheel_name}...")  # Direct console output
-                    urllib.request.urlretrieve(wheel_url, wheel_path)
-                    return wheel_path
-    except Exception as e:
-        logger.error(f"Error downloading wheel for {package_name}: {str(e)}")
-        print(f"Error downloading wheel for {package_name}: {str(e)}")  # Direct console output
-        raise
+        self.python_exe = str(self.venv_dir / 'Scripts' / 'python.exe') if os.name == 'nt' else str(self.venv_dir / 'bin' / 'python')
+        self.pip_exe = str(self.venv_dir / 'Scripts' / 'pip.exe') if os.name == 'nt' else str(self.venv_dir / 'bin' / 'pip')
 
-def install_wheel(wheel_path, target_dir):
-    """Install a wheel file using pip in a subprocess with real-time output"""
-    logger.info(f"Installing {os.path.basename(wheel_path)}...")
-    print(f"\nInstalling {os.path.basename(wheel_path)}...")  # Direct console output
-    
-    python_exe = sys.executable
-    cmd = [python_exe, '-m', 'pip', 'install', 
-           '--target', target_dir, 
-           '--no-deps',
-           '--no-cache-dir',  # Added to prevent caching issues
-           wheel_path]
-    
-    try:
-        # Use Popen for real-time output
+    def _get_system_python(self):
+        """Find system Python installation"""
+        if os.name == 'nt':  # Windows
+            try:
+                # Try to get Python path from py launcher
+                result = subprocess.run(['py', '-3', '-c', 'import sys; print(sys.executable)'],
+                                     capture_output=True, text=True)
+                if result.returncode == 0:
+                    return result.stdout.strip()
+            except FileNotFoundError:
+                pass
+            
+            # Check common Windows locations
+            possible_paths = [
+                os.path.expandvars(r'%LocalAppData%\Programs\Python\Python3*\python.exe'),
+                r'C:\Python3*\python.exe',
+                os.path.expandvars(r'%ProgramFiles%\Python3*\python.exe'),
+                os.path.expandvars(r'%ProgramFiles(x86)%\Python3*\python.exe')
+            ]
+            
+            import glob
+            for pattern in possible_paths:
+                matches = sorted(glob.glob(pattern), reverse=True)  # Latest version first
+                if matches:
+                    return matches[0]
+                    
+        else:  # Unix-like systems
+            try:
+                # Try common Unix paths
+                for path in ['/usr/bin/python3', '/usr/local/bin/python3']:
+                    if os.path.exists(path):
+                        return path
+            except Exception:
+                pass
+                
+        return None
+
+    def create_venv(self):
+        """Create a virtual environment using system Python"""
+        logger.info("Creating virtual environment...")
+        print(f"Creating virtual environment using Python at: {self.system_python}")
+        
+        try:
+            # First, ensure pip is up to date in system Python
+            # subprocess.run([self.system_python, '-m', 'pip', 'install', '--upgrade', 'pip'],
+            #              check=True)
+            
+            # Create venv using system Python
+            subprocess.run([self.system_python, '-m', 'venv', str(self.venv_dir)],
+                         check=True)
+            
+            # Upgrade pip in the new venv
+            # self.run_pip_command(['install', '--upgrade', 'pip'])
+            subprocess.run([self.python_exe , '-m', 'pip', 'install', '--upgrade', 'pip'],
+                         check=True)
+            
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to create virtual environment: {e}")
+            raise
+
+    def run_pip_command(self, args):
+        """Run a pip command in the virtual environment"""
+        cmd = [self.pip_exe] + args
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -57,7 +91,6 @@ def install_wheel(wheel_path, target_dir):
             bufsize=1
         )
 
-        # Print output in real-time
         while True:
             output = process.stdout.readline()
             error = process.stderr.readline()
@@ -69,94 +102,66 @@ def install_wheel(wheel_path, target_dir):
                 print(error.strip(), file=sys.stderr)
                 logger.error(error.strip())
             
-            # Check if process has finished
             if process.poll() is not None:
                 break
-        
-        # Get the return code
-        return_code = process.returncode
-        if return_code != 0:
-            # Get any remaining error output
-            _, stderr = process.communicate()
-            error_msg = f"Installation failed with return code {return_code}"
-            if stderr:
-                error_msg += f": {stderr}"
-            raise subprocess.CalledProcessError(return_code, cmd, stderr=stderr)
-            
-    except Exception as e:
-        logger.error(f"Error installing wheel: {str(e)}")
-        print(f"Error installing wheel: {str(e)}")  # Direct console output
-        raise
 
-def install_requirements(system_info):
-    logger.info("Starting requirements installation...")
-    print("\nStarting requirements installation...")  # Direct console output
-    
-    # Define a directory for persistent installations
-    base_dir = os.path.dirname(os.path.abspath(sys.executable))
-    persistent_install_dir = os.path.join(base_dir, 'persistent_packages')
-    os.makedirs(persistent_install_dir, exist_ok=True)
-    
-    logger.info(f"Installing to: {persistent_install_dir}")
-    print(f"Installing to: {persistent_install_dir}")  # Direct console output
-    
-    # Base requirements
-    base_requirements = [
-        'flask',
-        'python-dotenv',
-        'psutil'
-    ]
-    
-    try:
-        # Create a temporary directory for downloading wheels
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Install base requirements
-            logger.info("Installing base requirements...")
-            print("\nInstalling base requirements...")  # Direct console output
-            for req in base_requirements:
-                wheel_path = download_wheel(req, temp_dir)
-                install_wheel(wheel_path, persistent_install_dir)
+        if process.returncode != 0:
+            raise subprocess.CalledProcessError(process.returncode, cmd)
+
+    def install_requirements(self, system_info):
+        """Install all required packages"""
+        logger.info("Installing requirements...")
+        print("\nInstalling requirements...")
+
+        # Install base requirements
+        base_requirements = [
+            'flask',
+            'python-dotenv',
+            'psutil'
+        ]
+
+        for req in base_requirements:
+            self.run_pip_command(['install', req])
+
+        # Install llama-cpp-python with appropriate flags
+        if system_info.gpu_type == 'nvidia':
+            logger.info("Installing CUDA version of llama-cpp-python...")
+            os.environ['CMAKE_ARGS'] = '-DLLAMA_CUBLAS=on'
+            self.run_pip_command(['install', 'llama-cpp-python'])
             
-            # Install llama-cpp-python based on system
-            if system_info.gpu_type == 'nvidia':
-                logger.info("Installing CUDA version of llama-cpp-python...")
-                print("\nInstalling CUDA version of llama-cpp-python...")  # Direct console output
-                os.environ['CMAKE_ARGS'] = '-DLLAMA_CUBLAS=on'
-                wheel_path = download_wheel('llama-cpp-python', temp_dir)
-                install_wheel(wheel_path, persistent_install_dir)
-                
-            elif system_info.gpu_type == 'apple_silicon':
-                logger.info("Installing Metal version of llama-cpp-python...")
-                print("\nInstalling Metal version of llama-cpp-python...")  # Direct console output
-                os.environ['CMAKE_ARGS'] = '-DLLAMA_METAL=on'
-                wheel_path = download_wheel('llama-cpp-python', temp_dir)
-                install_wheel(wheel_path, persistent_install_dir)
-                
-            else:
-                logger.info("Installing CPU-only version of llama-cpp-python...")
-                print("\nInstalling CPU-only version of llama-cpp-python...")  # Direct console output
-                wheel_path = download_wheel('llama-cpp-python', temp_dir)
-                install_wheel(wheel_path, persistent_install_dir)
-        
-        logger.info("All requirements installed successfully")
-        print("\nAll requirements installed successfully")  # Direct console output
-        
-        # Verify installation
-        sys.path.append(persistent_install_dir)
+        elif system_info.gpu_type == 'apple_silicon':
+            logger.info("Installing Metal version of llama-cpp-python...")
+            os.environ['CMAKE_ARGS'] = '-DLLAMA_METAL=on'
+            self.run_pip_command(['install', 'llama-cpp-python'])
+            
+        else:
+            logger.info("Installing CPU-only version of llama-cpp-python...")
+            self.run_pip_command(['install', 'llama-cpp-python'])
+
+    def verify_installation(self):
+        """Verify that all required packages are installed"""
+        cmd = [self.python_exe, '-c', 
+               'import flask; import dotenv; import psutil; import llama_cpp']
         try:
-            import flask
-            import dotenv
-            import psutil
-            import llama_cpp
+            subprocess.run(cmd, check=True, capture_output=True)
             logger.info("Installation verification successful")
             print("Installation verification successful")
             return True
-        except ImportError as e:
-            logger.error(f"Installation verification failed: {str(e)}")
-            print(f"Installation verification failed: {str(e)}")
+        except subprocess.CalledProcessError:
+            logger.error("Installation verification failed")
+            print("Installation verification failed")
             return False
-        
+
+def install_requirements(system_info):
+    """Main installation function"""
+    base_dir = os.path.dirname(os.path.abspath(sys.executable))
+    installer = VenvInstaller(base_dir)
+    
+    try:
+        installer.create_venv()
+        installer.install_requirements(system_info)
+        return installer.verify_installation()
     except Exception as e:
-        logger.error(f"Unexpected error during installation: {str(e)}", exc_info=True)
-        print(f"Unexpected error during installation: {str(e)}")  # Direct console output
+        logger.error(f"Installation failed: {str(e)}")
+        print(f"Installation failed: {str(e)}")
         raise

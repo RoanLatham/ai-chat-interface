@@ -1,21 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
-import os
-import shutil
-from pathlib import Path
 
 block_cipher = None
-
-# Create a temporary directory for build assets
-temp_dir = Path('build_assets')
-temp_dir.mkdir(exist_ok=True)
-
-# Create empty directories structure
-(temp_dir / 'conversations').mkdir(exist_ok=True)
-
-# Copy only the example conversation
-example_conv = 'c04c9317-903d-4014-a128-c7dd4bca216f.pickle'
-if os.path.exists(f'conversations/{example_conv}'):
-    shutil.copy2(f'conversations/{example_conv}', temp_dir / 'conversations' / example_conv)
 
 a = Analysis(
     ['launcher.py'],
@@ -25,21 +10,19 @@ a = Analysis(
         ('system_detector.py', '.'),
         ('installer.py', '.'),
         ('local_ai_chat_app.py', '.'),
+        ('conversation.py', '.'),
         ('system-prompt.txt', '.'),
         ('chat-interface.html', '.'),
         ('icon/AII-icon.ico', 'icon'),
         ('icon/AII-console-icon.ico', 'icon'),
-        (str(temp_dir / 'conversations'), 'conversations'),
     ],
     hiddenimports=[
-        'torch',
-        'psutil',
-        'flask',
+        'venv',
+        'subprocess',
         'logging',
-        'datetime',
-        'json',
-        'dataclasses',
-
+        'pathlib',
+        'platform',
+        'dataclasses'
     ],
     hookspath=[],
     hooksconfig={},
@@ -74,11 +57,3 @@ exe = EXE(
     entitlements_file=None,
     icon='icon/AII-icon.ico'
 )
-
-# Clean up temporary directory after build
-def cleanup():
-    if temp_dir.exists():
-        shutil.rmtree(temp_dir)
-
-import atexit
-atexit.register(cleanup)

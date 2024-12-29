@@ -1,21 +1,31 @@
 import os
+import sys
+from pathlib import Path
 import logging
 from logging.handlers import RotatingFileHandler
 from typing import List
 from flask import Flask, Response, request, jsonify, send_from_directory
 from llama_cpp import Llama
-from Conversation import Conversation, create_conversation, save_conversation, load_conversation, load_all_conversations, Node
+from conversation import Conversation, create_conversation, save_conversation, load_conversation, load_all_conversations, Node
 import json
 import time
 import subprocess
 from dataclasses import dataclass
+import webbrowser
+import threading
 
 # Configure custom logging
 app_logger = logging.getLogger('app')
 app_logger.setLevel(logging.INFO)
 
-# File handler
-file_handler = RotatingFileHandler('app.log', maxBytes=10000000, backupCount=5)
+# Set up app directory and paths
+app_root = os.path.dirname(os.path.abspath(__file__))
+logs_dir = os.path.join(app_root, 'logs')
+os.makedirs(logs_dir, exist_ok=True)
+
+# File handler with absolute path
+log_file = os.path.join(logs_dir, 'app.log')
+file_handler = RotatingFileHandler(log_file, maxBytes=10000000, backupCount=5)
 file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 app_logger.addHandler(file_handler)
 
@@ -36,15 +46,17 @@ for handler in logging.root.handlers[:]:
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-
+app.root_path = app_root  # Set Flask root path
 # Disable Flask's default logging
 app.logger.handlers = []
 app.logger.propagate = False
-
 # Directory containing AI models
-MODELS_DIR = "ai_models"
+MODELS_DIR = os.path.join(app_root, "ai_models")
 # Directory containing AI conversations
-CONVERSATIONS_DIR = ".\conversations"
+CONVERSATIONS_DIR = os.path.join(app_root, "conversations")
+app_logger.info(f"App root: {app_root}")
+app_logger.info(f"MODELS_DIR: {MODELS_DIR}")
+app_logger.info(f"CONVERSATIONS_DIR: {CONVERSATIONS_DIR}")
 
 current_model = None 
 current_model_name = None
@@ -55,7 +67,8 @@ NAMING_PROMPT = """Based on the user's first message, generate a short, concise 
 
 # Load system prompt from file
 def load_system_prompt():
-    with open('system-prompt.txt', 'r') as file:
+    prompt_path = os.path.join(app.root_path, 'system-prompt.txt')
+    with open(prompt_path, 'r') as file:
         return file.read().strip()
 
 SUPER_SYSTEM_PROMPT = load_system_prompt()
@@ -651,8 +664,22 @@ def serve_icon(filename):
     app_logger.info(f"Requested icon file path: {full_path}")
     return send_from_directory(os.path.join(app.root_path, 'icon'), filename)
 
+def open_browser():
+    """Wait for Flask to start and open the browser"""
+    time.sleep(1.5)  # Give Flask a moment to start
+    webbrowser.open('http://127.0.0.1:5000')
+
 if __name__ == '__main__':
     app_logger.info("Application started")
     os.makedirs(MODELS_DIR, exist_ok=True)
     os.makedirs(CONVERSATIONS_DIR, exist_ok=True)
-    app.run(debug=True)
+    
+    is_packaged = '--packaged' in sys.argv
+    
+    if is_packaged:
+        # Packaged version: No auto-reload, open browser
+        threading.Thread(target=open_browser).start()
+        app.run(debug=False)
+    else:
+        # Dev version: Auto-reload, no browser
+        app.run(debug=True)
