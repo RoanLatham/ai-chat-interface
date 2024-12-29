@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import List, Optional, Dict
 import os
 import uuid
-import logging
 
 # Node class represents a single message in the conversation
 class Node:

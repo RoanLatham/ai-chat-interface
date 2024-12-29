@@ -1,8 +1,6 @@
 import os
-from datetime import datetime
 import logging
 from logging.handlers import RotatingFileHandler
-import re
 from typing import List
 from flask import Flask, Response, request, jsonify, send_from_directory
 from llama_cpp import Llama
@@ -305,7 +303,7 @@ def load_model(model_name):
         selected_model_path = selected_model_path.replace("\\", "/")
         
         app_logger.info(f"Loading model: {selected_model_path}")
-        current_model = Llama(model_path=selected_model_path, n_ctx=4096, n_threads=8, seed=42, f16_kv=True, use_mlock=True)
+        current_model = Llama(model_path=selected_model_path, n_ctx=4096, n_threads=8, f16_kv=True, use_mlock=True)
         current_model_name = model_name
         load_model.model_cache[model_name] = current_model
     return current_model
