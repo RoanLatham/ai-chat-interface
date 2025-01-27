@@ -4,3 +4,6 @@ conversations/
 __pycache__/
 app.log
 GitIgnore/
+build_tools/
+build/
+.vscode/
