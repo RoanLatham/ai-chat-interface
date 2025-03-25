@@ -1279,7 +1279,7 @@
           <div id="message-box">
             <textarea
               id="user-input"
-              placeholder="Type your message..."
+              placeholder="Type your message... (shift+enter for a new line)"
               rows="1"
             ></textarea>
           </div>
@@ -1917,8 +1917,7 @@
                   timestamp: aiData.timestamp,
                   model_name: currentModel,
                 });
-              } else if (aiData.status === "error")
-              {
+              } else if (aiData.status === "error") {
                 throw new Error(aiData.message);
               }
             }
@@ -2040,7 +2039,7 @@
         noModelsGuide.style.display = "flex";
         if (noModelsInstalled) {
           noModelsMessage.style.display = "flex";
-          closeGuideButton.style.display = "none";
+          closeGuideButton.style.display = "flex";
         } else {
           noModelsMessage.style.display = "none";
           closeGuideButton.style.display = "flex";
