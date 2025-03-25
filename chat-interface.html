@@ -1105,6 +1105,21 @@
         position: absolute;
         left: -15px;
       }
+
+      .conversation-warning-icon {
+        color: #ff9800;
+        margin-left: 8px;
+        font-size: 1.25rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: help;
+      }
+
+      .system-message.version-warning {
+        background-color: #fdb779;
+        font-weight: 500;
+      }
     </style>
   </head>
   <body>
@@ -1341,6 +1356,24 @@
             data.branch.forEach((message) => addMessage(message));
             currentConversationId = data.conversation_id;
             highlightActiveConversation();
+
+            // Display version warning if present
+            if (data.version_warning) {
+              addMessage({
+                id: "version-warning-" + Date.now().toString(),
+                content: data.version_warning,
+                sender: "System",
+                timestamp: new Date().toISOString(),
+              });
+            }
+          } else {
+            // Handle conversation loading failure
+            addMessage({
+              id: "error-" + Date.now().toString(),
+              content: data.error || "Failed to load conversation",
+              sender: "System",
+              timestamp: new Date().toISOString(),
+            });
           }
         } catch (error) {
           console.error("Error loading conversation:", error);
@@ -1366,6 +1399,15 @@
           "message",
           `${message.sender.toLowerCase()}-message`
         );
+
+        // Add version-warning class for system messages about version warnings
+        if (
+          message.sender === "System" &&
+          message.content.includes("version")
+        ) {
+          messageElement.classList.add("version-warning");
+        }
+
         messageElement.innerHTML = formatMessage(message.content);
 
         const infoElement = document.createElement("div");
@@ -1541,7 +1583,7 @@
         const messageContainer = document.querySelector(
           `[data-node-id="${nodeId}"]`
         );
-        if (messageContainer.classList.contains("system-message-container")) {
+        if (messageContainer.classList.contains("system-message")) {
           return; // Exit the function if it's a system message
         }
 
@@ -2106,6 +2148,14 @@
         item.classList.add("conversation-item");
         item.dataset.conversationId = conv.id;
 
+        // Add warning indicator if there's a version warning
+        if (conv.version_warning) {
+          const warningIcon = document.createElement("span");
+          warningIcon.classList.add("conversation-warning-icon");
+          warningIcon.textContent = "⚠️";
+          warningIcon.title = conv.version_warning;
+          item.appendChild(warningIcon);
+        }
         const text = document.createElement("span");
         text.classList.add("conversation-name");
         text.textContent = conv.name;
@@ -2227,10 +2277,10 @@
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
 
-        conversations.forEach((conv) => {
-          console.log("Conversation:", conv); // Debug log
-          if (conv.latest_message_timestamp) {
-            const date = new Date(conv.latest_message_timestamp);
+        conversations.forEach((conversation) => {
+          console.log("Conversation:", conversation); // Debug log
+          if (conversation.latest_message_timestamp) {
+            const date = new Date(conversation.latest_message_timestamp);
             console.log("Parsed date:", date); // Debug log
             let key;
 
@@ -2254,13 +2304,13 @@
             if (!groups[key]) {
               groups[key] = [];
             }
-            groups[key].push(conv);
+            groups[key].push(conversation);
           } else {
-            console.log("No timestamp for conversation:", conv.id); // Debug log
+            console.log("No timestamp for conversation:", conversation.id); // Debug log
             if (!groups["No date"]) {
               groups["No date"] = [];
             }
-            groups["No date"].push(conv);
+            groups["No date"].push(conversation);
           }
         });
 
@@ -2358,7 +2408,20 @@
           const response = await fetch("/conversations/current");
           const data = await response.json();
           if (data.conversation_id) {
-            loadConversation(data.conversation_id);
+            chatContainer.innerHTML = "";
+            data.branch.forEach((message) => addMessage(message));
+            currentConversationId = data.conversation_id;
+            highlightActiveConversation();
+
+            // Display version warning if present
+            if (data.version_warning) {
+              addMessage({
+                id: "version-warning-" + Date.now().toString(),
+                content: data.version_warning,
+                sender: "System",
+                timestamp: new Date().toISOString(),
+              });
+            }
           }
         } catch (error) {
           console.error("Error loading current conversation:", error);

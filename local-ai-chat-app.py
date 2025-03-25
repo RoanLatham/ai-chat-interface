@@ -8,7 +8,7 @@ import platform
 from typing import List
 from flask import Flask, Response, request, jsonify, send_from_directory
 from llama_cpp import Llama
-from conversation import Conversation, create_conversation, save_conversation, load_conversation, load_all_conversations, Node
+from conversation import Conversation, create_conversation, save_conversation, load_conversation, load_all_conversations, Node, CONVERSATION_VERSION
 import json
 import time
 import subprocess
@@ -428,12 +428,13 @@ def open_models_folder():
 # Get all conversations
 @app.route('/conversations', methods=['GET'])
 def get_conversations():
-    conversations = load_all_conversations(CONVERSATIONS_DIR)
+    conversations_with_warnings = load_all_conversations(CONVERSATIONS_DIR)
     return jsonify([{
         'id': conv.id,
         'name': conv.name,
-        'latest_message_timestamp': conv.latest_message_timestamp.isoformat() if conv.latest_message_timestamp else None
-    } for conv in conversations])
+        'latest_message_timestamp': conv.latest_message_timestamp.isoformat() if conv.latest_message_timestamp else None,
+        'version_warning': warning
+    } for conv, warning in conversations_with_warnings])
 
 # Switch to a different conversation
 @app.route('/conversations/switch', methods=['POST'])
@@ -442,11 +443,23 @@ def switch_conversation():
     conversation_id = request.json['id']
     if current_conversation:
         save_conversation(current_conversation, CONVERSATIONS_DIR)
-    current_conversation = load_conversation(conversation_id, CONVERSATIONS_DIR)
+    
+    loaded_conversation, version_warning = load_conversation(conversation_id, CONVERSATIONS_DIR)
+    
+    if not loaded_conversation:
+        # The conversation was deleted due to version incompatibility
+        return jsonify({
+            'success': False,
+            'error': version_warning or "Conversation could not be loaded"
+        }), 404
+    
+    current_conversation = loaded_conversation
+    
     return jsonify({
         'success': True,
         'conversation_id': current_conversation.id,
         'conversation_name': current_conversation.name,
+        'version_warning': version_warning,
         'branch': [
             {
                 'id': node.id,
@@ -493,7 +506,10 @@ def rename_conversation():
     new_name = data['new_name']
     
     try:
-        conversation = load_conversation(conversation_id, CONVERSATIONS_DIR)
+        conversation, warning = load_conversation(conversation_id, CONVERSATIONS_DIR)
+        if not conversation:
+            return jsonify({'success': False, 'error': warning or "Conversation not found"}), 404
+            
         conversation.set_name(new_name)
         save_conversation(conversation, CONVERSATIONS_DIR)
         return jsonify({'success': True})
@@ -504,9 +520,19 @@ def rename_conversation():
 @app.route('/conversations/current', methods=['GET'])
 def get_current_conversation():
     if current_conversation:
+        # Check if the current conversation needs a version update
+        version_parts = [int(p) for p in CONVERSATION_VERSION.split('.')]
+        conv_parts = [int(p) for p in current_conversation.version.split('.')] if hasattr(current_conversation, 'version') else [0, 0, 0]
+        
+        version_warning = None
+        if conv_parts[1] < version_parts[1]:
+            # Minor version difference send warning message
+            version_warning = f"This conversation was created with an older version (v{current_conversation.version if hasattr(current_conversation, 'version') else '0.0.0'}). Some features may not work as expected."
+        
         return jsonify({
             'conversation_id': current_conversation.id,
             'conversation_name': current_conversation.name,
+            'version_warning': version_warning,
             'branch': [
                 {
                     'id': node.id,
@@ -518,7 +544,7 @@ def get_current_conversation():
             ]
         })
     else:
-        return jsonify({'conversation_id': None, 'conversation_name': None, 'branch': []})
+        return jsonify({'conversation_id': None, 'conversation_name': None, 'branch': [], 'version_warning': None})
 
 # Switch to a different branch in the conversation
 @app.route('/conversation/switch_branch', methods=['POST'])

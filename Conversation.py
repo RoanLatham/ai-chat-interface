@@ -1,9 +1,16 @@
 import pickle
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
 import os
 import uuid
 import logging
+
+# Current version of the Conversation class
+# x.y.z format where:
+# x = major version (incompatible changes)
+# y = minor version (backwards compatible changes)
+# z = patch version (bug fixes)
+CONVERSATION_VERSION = "1.0.0"
 
 # Node class represents a single message in the conversation
 class Node:
@@ -82,6 +89,7 @@ class Conversation:
         self.tree = Tree()
         self.metadata: Dict[str, any] = {}  # For storing additional information
         self.latest_message_timestamp: Optional[datetime] = None
+        self.version = CONVERSATION_VERSION  # Store the current version when created
 
     # Add a new message to the conversation
     def add_message(self, content: str, sender: str, model_name: Optional[str] = None, internal_monologue: Optional[str] = None) -> Node:
@@ -114,14 +122,42 @@ class Conversation:
 
     # Save the conversation to a file
     def save(self, filename: str):
+        self.version = CONVERSATION_VERSION
         with open(filename, 'wb') as f:
             pickle.dump(self, f)
 
     # Load a conversation from a file
     @staticmethod
-    def load(filename: str) -> 'Conversation':
-        with open(filename, 'rb') as f:
-            return pickle.load(f)
+    def load(filename: str) -> Tuple[Optional['Conversation'], Optional[str]]:
+        try:
+            with open(filename, 'rb') as f:
+                conversation = pickle.load(f)
+            
+            # Check versioning
+            if not hasattr(conversation, 'version'):
+                # Handle legacy conversations without version
+                conversation.version = "0.0.0"  # Consider as very old version
+            
+            # Parse versions for comparison
+            current_parts = [int(p) for p in CONVERSATION_VERSION.split('.')]
+            conv_parts = [int(p) for p in conversation.version.split('.')]
+            
+            # Major version difference - don't load at all
+            if conv_parts[0] < current_parts[0]:
+                os.remove(filename)  # Delete incompatible conversation file
+                return None, f"Deleted incompatible conversation (v{conversation.version})"
+            
+            # Minor version difference - load but warn
+            warning_message = None
+            if conv_parts[1] < current_parts[1]:
+                warning_message = f"This conversation was created with an older version (v{conversation.version}). Some features may not work as expected."
+                # Update to current version
+                conversation.version = CONVERSATION_VERSION
+            
+            return conversation, warning_message
+        except Exception as e:
+            logging.error(f"Error loading conversation: {str(e)}")
+            return None, f"Error loading conversation: {str(e)}"
     
     def set_html_content(self, html: str):
         self.html_content = html
@@ -132,13 +168,17 @@ class Conversation:
     def set_name(self, new_name: str):
         self.name = new_name
 
-def load_all_conversations(directory: str) -> List[Conversation]:
+def load_all_conversations(directory: str) -> List[Tuple[Conversation, Optional[str]]]:
     conversations = []
     for f in os.listdir(directory):
         if f.endswith('.pickle'):
-            conv = load_conversation(f[:-7], directory)
-            conversations.append(conv)
-    return sorted(conversations, key=lambda x: x.latest_message_timestamp or datetime.min, reverse=True)
+            try:
+                conv, warning = load_conversation(f[:-7], directory)
+                if conv:
+                    conversations.append((conv, warning))
+            except Exception as e:
+                logging.error(f"Error loading conversation {f}: {str(e)}")
+    return sorted(conversations, key=lambda x: x[0].latest_message_timestamp or datetime.min, reverse=True)
 
 # Create a new conversation with a given name
 def create_conversation(name: str = "Unnamed Conversation") -> Conversation:
@@ -150,6 +190,6 @@ def save_conversation(conversation: Conversation, directory: str):
     conversation.save(filename)
 
 # Load a conversation from a file in the specified directory
-def load_conversation(id: str, directory: str) -> Conversation:
+def load_conversation(id: str, directory: str) -> Tuple[Optional[Conversation], Optional[str]]:
     filename = os.path.join(directory, f"{id}.pickle")
     return Conversation.load(filename)
