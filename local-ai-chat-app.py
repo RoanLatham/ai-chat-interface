@@ -3,38 +3,83 @@ from datetime import datetime
 import logging
 from logging.handlers import RotatingFileHandler
 import re
+import sys
+import platform
 from typing import List
 from flask import Flask, Response, request, jsonify, send_from_directory
 from llama_cpp import Llama
-from Conversation import Conversation, create_conversation, save_conversation, load_conversation, load_all_conversations, Node
+from conversation import Conversation, create_conversation, save_conversation, load_conversation, load_all_conversations, Node
 import json
 import time
 import subprocess
+import webbrowser
+import threading
 from dataclasses import dataclass
 
+# Determine if running in packaged mode or development mode
+def is_packaged():
+    """Check if the application is running as a packaged executable"""
+    return getattr(sys, 'frozen', False)
+
+# Get the base directory for the application
+def get_base_dir():
+    """Get the base directory for the application (different in dev vs packaged)"""
+    if is_packaged():
+        # When packaged with PyInstaller, sys._MEIPASS contains the path to the bundle
+        if hasattr(sys, '_MEIPASS'):
+            return sys._MEIPASS
+        # For other packagers, use the executable's directory
+        return os.path.dirname(sys.executable)
+    else:
+        # In development mode, use the script directory
+        return os.path.dirname(os.path.abspath(__file__))
+
+# Get user data directory (for models, conversations)
+def get_user_data_dir():
+    """Get the directory for user data that should persist across app updates"""
+    if is_packaged():
+        # In packaged mode, store user data next to the executable
+        return os.path.dirname(sys.executable)
+    else:
+        # In development mode, use the current directory
+        return os.path.dirname(os.path.abspath(__file__))
+
+# Initialize paths
+BASE_DIR = get_base_dir()
+USER_DATA_DIR = get_user_data_dir()
+
 # Configure custom logging
-app_logger = logging.getLogger('app')
-app_logger.setLevel(logging.INFO)
+def setup_logging():
+    # Create logs directory if it doesn't exist
+    logs_dir = os.path.join(USER_DATA_DIR, "logs")
+    os.makedirs(logs_dir, exist_ok=True)
+    
+    app_logger = logging.getLogger('app')
+    app_logger.setLevel(logging.INFO)
+    
+    # File handler - write to user data directory
+    log_file = os.path.join(logs_dir, 'app.log')
+    file_handler = RotatingFileHandler(log_file, maxBytes=10000000, backupCount=5)
+    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    app_logger.addHandler(file_handler)
+    
+    # Console handler for app_logger
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    app_logger.addHandler(console_handler)
+    
+    # Configure Flask logging
+    werkzeug_logger = logging.getLogger('werkzeug')
+    werkzeug_logger.setLevel(logging.INFO)
+    werkzeug_logger.addHandler(console_handler)
+    
+    # Remove default handlers from the root logger
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+    
+    return app_logger
 
-# File handler
-file_handler = RotatingFileHandler('app.log', maxBytes=10000000, backupCount=5)
-file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-app_logger.addHandler(file_handler)
-
-# Console handler for app_logger
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-app_logger.addHandler(console_handler)
-
-# Configure Flask logging
-werkzeug_logger = logging.getLogger('werkzeug')
-werkzeug_logger.setLevel(logging.INFO)
-werkzeug_logger.addHandler(console_handler)
-
-# Remove default handlers from the root logger
-for handler in logging.root.handlers[:]:
-    logging.root.removeHandler(handler)
-
+app_logger = setup_logging()
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -44,9 +89,15 @@ app.logger.handlers = []
 app.logger.propagate = False
 
 # Directory containing AI models
-MODELS_DIR = "ai_models"
+MODELS_DIR = os.path.join(USER_DATA_DIR, "ai_models")
 # Directory containing AI conversations
-CONVERSATIONS_DIR = ".\conversations"
+CONVERSATIONS_DIR = os.path.join(USER_DATA_DIR, "conversations")
+# System prompt file location
+SYSTEM_PROMPT_PATH = os.path.join(BASE_DIR, "system-prompt.txt")
+
+# Initialize directories
+os.makedirs(MODELS_DIR, exist_ok=True)
+os.makedirs(CONVERSATIONS_DIR, exist_ok=True)
 
 current_model = None 
 current_model_name = None
@@ -57,8 +108,13 @@ NAMING_PROMPT = """Based on the user's first message, generate a short, concise 
 
 # Load system prompt from file
 def load_system_prompt():
-    with open('system-prompt.txt', 'r') as file:
-        return file.read().strip()
+    try:
+        with open(SYSTEM_PROMPT_PATH, 'r', encoding='utf-8') as file:
+            return file.read().strip()
+    except FileNotFoundError:
+        app_logger.warning("System prompt file not found, using default system prompt")
+        # TODO add real back up session prompt during prompt naming refactor
+        return DEFAULT_SYSTEM_PROMPT
 
 SUPER_SYSTEM_PROMPT = load_system_prompt()
 
@@ -309,7 +365,19 @@ def load_model(model_name):
         selected_model_path = selected_model_path.replace("\\", "/")
         
         app_logger.info(f"Loading model: {selected_model_path}")
-        current_model = Llama(model_path=selected_model_path, n_ctx=4096, n_threads=8, seed=42, f16_kv=True, use_mlock=True)
+        
+        # Configure model parameters
+        model_params = {
+            "model_path": selected_model_path,
+            "n_ctx": 4096,
+            "n_threads": 8,
+            "seed": 42,
+            "f16_kv": True,
+            "use_mlock": True
+        }
+        
+        # Load the model with the appropriate configuration
+        current_model = Llama(**model_params)
         current_model_name = model_name
         load_model.model_cache[model_name] = current_model
     return current_model
@@ -321,7 +389,7 @@ def get_available_models():
 # Serve the main HTML page
 @app.route('/')
 def index():
-    return send_from_directory('.', 'chat-interface.html')
+    return send_from_directory(BASE_DIR, 'chat-interface.html')
 
 ## Model-related routes
 
@@ -653,12 +721,38 @@ def set_system_prompt():
 # Serve icon files
 @app.route('/icon/<path:filename>')
 def serve_icon(filename):
-    full_path = os.path.join(app.root_path, 'icon', filename)
-    app_logger.info(f"Requested icon file path: {full_path}")
-    return send_from_directory(os.path.join(app.root_path, 'icon'), filename)
+    icon_dir = os.path.join(BASE_DIR, 'icon')
+    app_logger.info(f"Requested icon file path from: {icon_dir}/{filename}")
+    return send_from_directory(icon_dir, filename)
+
+def open_browser():
+    """Open browser to the application URL"""
+    def _open_browser():
+        time.sleep(1.5)  # Give the server a bit of time to start
+        webbrowser.open('http://localhost:5000')
+    
+    browser_thread = threading.Thread(target=_open_browser)
+    browser_thread.daemon = True
+    browser_thread.start()
 
 if __name__ == '__main__':
     app_logger.info("Application started")
+    
+    # Log environment information
+    app_logger.info(f"Running in {'packaged' if is_packaged() else 'development'} mode")
+    app_logger.info(f"Base directory: {BASE_DIR}")
+    app_logger.info(f"User data directory: {USER_DATA_DIR}")
+    app_logger.info(f"Models directory: {MODELS_DIR}")
+    app_logger.info(f"Conversations directory: {CONVERSATIONS_DIR}")
+    
+    # Ensure directories exist
     os.makedirs(MODELS_DIR, exist_ok=True)
     os.makedirs(CONVERSATIONS_DIR, exist_ok=True)
     app.run(debug=True)
+    
+    # Open browser when launching the application
+    if not os.environ.get('NO_BROWSER_OPEN'):
+        open_browser()
+    
+    # Use 127.0.0.1 for localhost
+    app.run(host='127.0.0.1', port=5000, debug=not is_packaged())
