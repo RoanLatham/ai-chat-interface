@@ -133,5 +133,9 @@ Important:
 - Never respond with "", or " " or similar
 - Never give an empty response
 
+- Only use "</AI Internal Thought>" and "</AI Response>" XML styled tags. 
+- No other XML style tags are valid.
+- NEVER use any other XML style tags as part of your response, unless its in a codeblock or your're explaining XML to the user
+
 You will be provided with an opening <AI Response> tag, you must end your response with a closing response tag: </AI Response>
 <</SYS>>
