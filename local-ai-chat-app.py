@@ -240,9 +240,7 @@ def prepare_full_prompt(history: str, token_limits: TokenLimits, internal_though
     full_prompt += f"{history}\n\n"
     
     if internal_thought:
-        full_prompt += f"<AI Internal Thought>{internal_thought}\n\n"
-    
-    full_prompt += "<AI Response>"
+        full_prompt += f"<AI Internal Thought>{internal_thought}</AI Internal Thought>\n\n"
 
     # Final check against max_tokens
     final_tokens = count_tokens(full_prompt)
@@ -262,20 +260,24 @@ def generate_internal_thought(model, conversation, token_limits: TokenLimits):
     
     inference_start = time.time()
     response = model(prompt, max_tokens=500, stop=STOP_PHRASES)
+    stripped_response = response['choices'][0]['text'].strip()
+    app_logger.info(f"<AI Internal Thought>\n{stripped_response}\n</AI Internal Thought>")
     app_logger.info(f"Internal thought inference took {time.time() - inference_start:.4f} seconds")
-    return response['choices'][0]['text'].strip()
+    return stripped_response
 
 # Generate final AI response
 def generate_final_response(model, conversation, internal_thought: str, token_limits: TokenLimits):
     history_start = time.time()
     history = prepare_gatt_history(conversation, token_limits)
-    prompt = prepare_full_prompt(history, token_limits, internal_thought)
+    prompt = prepare_full_prompt(history, token_limits, internal_thought) + "<AI Response>"
     app_logger.info(f"Final response prompt preparation took {time.time() - history_start:.4f} seconds")
     
     inference_start = time.time()
     response = model(prompt, max_tokens=4096, stop=STOP_PHRASES)
+    stripped_response = response['choices'][0]['text'].strip()
+    app_logger.info(f"<AI Response>\n{stripped_response}\n</AI Response>")
     app_logger.info(f"Final response inference took {time.time() - inference_start:.4f} seconds")
-    return response['choices'][0]['text'].strip()
+    return stripped_response
 
 # Load AI model
 def load_model(model_name):
