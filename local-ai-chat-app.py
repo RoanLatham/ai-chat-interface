@@ -471,6 +471,59 @@ def switch_conversation():
         ]
     })
 
+
+# Get the current conversation
+@app.route('/conversations/current', methods=['GET'])
+def get_current_conversation():
+    if current_conversation:
+        # Check if the current conversation needs a version update
+        version_parts = [int(p) for p in CONVERSATION_VERSION.split('.')]
+        conv_parts = [int(p) for p in current_conversation.version.split('.')] if hasattr(current_conversation, 'version') else [0, 0, 0]
+        
+        version_warning = None
+        if conv_parts[1] < version_parts[1]:
+            # Minor version difference send warning message
+            version_warning = f"This conversation was created with an older version (v{current_conversation.version if hasattr(current_conversation, 'version') else '0.0.0'}). Some features may not work as expected."
+        
+        return jsonify({
+            'conversation_id': current_conversation.id,
+            'conversation_name': current_conversation.name,
+            'version_warning': version_warning,
+            'branch': [
+                {
+                    'id': node.id,
+                    'content': node.content,
+                    'sender': node.sender,
+                    'timestamp': node.timestamp.isoformat(),
+                    'model_name': node.model_name
+                } for node in current_conversation.get_current_branch()
+            ]
+        })
+    else:
+        return jsonify({'conversation_id': None, 'conversation_name': None, 'branch': [], 'version_warning': None})
+
+# Get sibling messages for a given node
+@app.route('/conversations/get_siblings', methods=['POST'])
+def get_siblings():
+    data = request.json
+    node_id = data['node_id']
+    
+    if current_conversation:
+        siblings = current_conversation.get_siblings(node_id)
+        return jsonify({
+            'siblings': [
+                {
+                    'id': node.id,
+                    'content': node.content,
+                    'sender': node.sender,
+                    'timestamp': node.timestamp.isoformat(),
+                    'model_name': node.model_name
+                } for node in siblings
+            ]
+        })
+    
+    return jsonify({'siblings': []}), 400
+
 # Delete a conversation
 @app.route('/conversation/delete', methods=['POST'])
 def delete_conversation():
@@ -515,36 +568,6 @@ def rename_conversation():
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
-
-# Get the current conversation
-@app.route('/conversations/current', methods=['GET'])
-def get_current_conversation():
-    if current_conversation:
-        # Check if the current conversation needs a version update
-        version_parts = [int(p) for p in CONVERSATION_VERSION.split('.')]
-        conv_parts = [int(p) for p in current_conversation.version.split('.')] if hasattr(current_conversation, 'version') else [0, 0, 0]
-        
-        version_warning = None
-        if conv_parts[1] < version_parts[1]:
-            # Minor version difference send warning message
-            version_warning = f"This conversation was created with an older version (v{current_conversation.version if hasattr(current_conversation, 'version') else '0.0.0'}). Some features may not work as expected."
-        
-        return jsonify({
-            'conversation_id': current_conversation.id,
-            'conversation_name': current_conversation.name,
-            'version_warning': version_warning,
-            'branch': [
-                {
-                    'id': node.id,
-                    'content': node.content,
-                    'sender': node.sender,
-                    'timestamp': node.timestamp.isoformat(),
-                    'model_name': node.model_name
-                } for node in current_conversation.get_current_branch()
-            ]
-        })
-    else:
-        return jsonify({'conversation_id': None, 'conversation_name': None, 'branch': [], 'version_warning': None})
 
 # Switch to a different branch in the conversation
 @app.route('/conversation/switch_branch', methods=['POST'])
@@ -697,28 +720,6 @@ def get_original_content():
             })
     
     return jsonify({'success': False, 'error': 'Node not found'}), 404
-
-# Get sibling messages for a given node
-@app.route('/conversations/get_siblings', methods=['POST'])
-def get_siblings():
-    data = request.json
-    node_id = data['node_id']
-    
-    if current_conversation:
-        siblings = current_conversation.get_siblings(node_id)
-        return jsonify({
-            'siblings': [
-                {
-                    'id': node.id,
-                    'content': node.content,
-                    'sender': node.sender,
-                    'timestamp': node.timestamp.isoformat(),
-                    'model_name': node.model_name
-                } for node in siblings
-            ]
-        })
-    
-    return jsonify({'siblings': []}), 400
 
 ## System prompt routes
 # Get the current system prompt
