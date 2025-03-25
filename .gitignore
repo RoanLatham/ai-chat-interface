@@ -2,7 +2,9 @@ local-ai-chat-env/
 ai_models/
 conversations/
 __pycache__/
-app.log
+logs/
 GitIgnore/
 build/
+dist/
+Output/
 .vscode/
