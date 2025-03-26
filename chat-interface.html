@@ -1120,6 +1120,39 @@
         background-color: #fdb779;
         font-weight: 500;
       }
+
+      .input-buttons-container {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-end;
+      }
+
+      .thinking-toggle {
+        background-color: var(--conversation-bg);
+        border-radius: 25px;
+        width: 50px;
+        height: 50px;
+        border: none;
+        color: #ffffff;
+        font-size: 1.25rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 10px;
+        transition: color 0.3s ease;
+      }
+
+      .thinking-toggle:hover {
+        color: var(--text-color);
+        background-color: var(--conversation-hover-color);
+      }
+
+      .thinking-toggle.active {
+        /* background-color: var(--conversation-hover-color); */
+        color: var(--secondary-color);
+        /* background-color: var(--secondary-color); */
+      }
     </style>
   </head>
   <body>
@@ -1297,6 +1330,15 @@
               placeholder="Type your message... (shift+enter for a new line)"
               rows="1"
             ></textarea>
+            <div class="input-buttons-container">
+              <button
+                id="thinking-toggle"
+                class="thinking-toggle"
+                title="Toggle AI thinking mode"
+              >
+                💡︎
+              </button>
+            </div>
           </div>
           <button id="send-button" class="button send-button">
             Send
@@ -1774,6 +1816,7 @@
             body: JSON.stringify({
               node_id: nodeId,
               model: currentModel,
+              thinking_mode: thinkingModeEnabled,
             }),
           });
 
@@ -1791,6 +1834,16 @@
             } else if (data.status === "generating") {
               removeLoadingMessage();
               showTypingIndicator();
+            } else if (data.status === "thinking") {
+              removeLoadingMessage();
+              removeTypingIndicator();
+              addMessage({
+                id: "thinking-" + Date.now().toString(),
+                content: data.thinking,
+                sender: "System",
+                timestamp: data.timestamp,
+              });
+              showTypingIndicator();
             } else if (data.status === "complete") {
               removeTypingIndicator();
               setWaitingState(false);
@@ -1801,6 +1854,8 @@
                 timestamp: data.timestamp,
                 model_name: currentModel,
               });
+            } else if (data.status === "error") {
+              throw new Error(data.message);
             }
           }
         } catch (error) {
@@ -1890,6 +1945,7 @@
                 message: message,
                 model: currentModel,
                 system_prompt: currentSystemPrompt,
+                thinking_mode: thinkingModeEnabled,
               }),
             });
 
@@ -1927,6 +1983,7 @@
               body: JSON.stringify({
                 conversation_id: humanData.conversation_id,
                 model: currentModel,
+                thinking_mode: thinkingModeEnabled,
               }),
             });
 
@@ -1948,6 +2005,16 @@
                   startFirstMessageTimer();
                   isFirstMessage = false;
                 }
+              } else if (aiData.status === "thinking") {
+                removeLoadingMessage();
+                removeTypingIndicator();
+                addMessage({
+                  id: "thinking-" + Date.now().toString(),
+                  content: aiData.thinking,
+                  sender: "System",
+                  timestamp: aiData.timestamp,
+                });
+                showTypingIndicator();
               } else if (aiData.status === "complete") {
                 clearFirstMessageTimer();
                 removeTypingIndicator();
@@ -2611,6 +2678,50 @@
       loadConversations();
       loadModelsFolderPath();
       loadCurrentConversation();
+
+      let thinkingModeEnabled =
+        localStorage.getItem("thinkingModeEnabled") === "true";
+
+      // Initialize UI state based on saved preferences
+      function initializeThinkingToggle() {
+        const thinkingToggle = document.getElementById("thinking-toggle");
+        if (thinkingModeEnabled) {
+          thinkingToggle.classList.add("active");
+        } else {
+          thinkingToggle.classList.remove("active");
+        }
+      }
+
+      // Handle thinking toggle button click
+      document
+        .getElementById("thinking-toggle")
+        .addEventListener("click", function () {
+          thinkingModeEnabled = !thinkingModeEnabled;
+          localStorage.setItem("thinkingModeEnabled", thinkingModeEnabled);
+
+          if (thinkingModeEnabled) {
+            this.classList.add("active");
+            addMessage({
+              id: Date.now().toString(),
+              content:
+                "AI thinking mode enabled. You'll see the AI's internal thought process before responses.",
+              sender: "System",
+              timestamp: null,
+            });
+          } else {
+            this.classList.remove("active");
+            addMessage({
+              id: Date.now().toString(),
+              content:
+                "AI thinking mode disabled. The AI will respond directly without showing its thought process.",
+              sender: "System",
+              timestamp: null,
+            });
+          }
+        });
+
+      // Initialize UI state
+      initializeThinkingToggle();
     </script>
   </body>
 </html>

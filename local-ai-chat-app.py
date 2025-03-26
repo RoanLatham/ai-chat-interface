@@ -181,7 +181,7 @@ class TokenLimits:
             raise ValueError("Target tokens cannot exceed max tokens")
 
 # Generate AI response for a given conversation, user message must already be added to conversation
-def generate_ai_response(conversation: Conversation, model_name: str, token_limits: TokenLimits = TokenLimits(4096)): #-> Generator[str, None, None]:
+def generate_ai_response(conversation: Conversation, model_name: str, thinking_mode: bool = False, token_limits: TokenLimits = TokenLimits(4096)): #-> Generator[str, None, None]:
     start_time = time.time()
     global current_model, current_model_name
 
@@ -195,11 +195,24 @@ def generate_ai_response(conversation: Conversation, model_name: str, token_limi
     yield json.dumps({"status": "generating"})
 
     try:
-        # Generate internal thought
-        thought_start = time.time()
-        internal_thought = generate_internal_thought(current_model, conversation, token_limits)
-        thought_time = time.time() - thought_start
-        app_logger.info(f"Internal thought generation took {thought_time:.4f} seconds")
+        # Generate internal thought only if thinking mode is enabled
+        if thinking_mode:
+            thought_start = time.time()
+            internal_thought = generate_internal_thought(current_model, conversation, token_limits)
+            thought_time = time.time() - thought_start
+            app_logger.info(f"Internal thought generation took {thought_time:.4f} seconds")
+            
+            # Show the internal thought as a separate message
+            thinking_message = f"💡︎ **AI Thinking Process:**\n\n{internal_thought}"
+            yield json.dumps({
+                "status": "thinking",
+                "thinking": thinking_message,
+                "timestamp": datetime.now().isoformat()
+            })
+        else:
+            # Use placeholder internal thought when thinking mode is disabled
+            internal_thought = "<AI Internal Thought></AI Internal Thought>\nThinking mode is disabled. Proceeding directly to response."
+            app_logger.info("Thinking mode disabled, skipping internal thought generation")
         
         # Generate AI response
         response_start = time.time()
@@ -209,7 +222,9 @@ def generate_ai_response(conversation: Conversation, model_name: str, token_limi
 
         # Add the new message to the conversation
         save_start = time.time()
-        ai_node = conversation.add_message(ai_response, "AI", current_model_name, internal_thought)
+        # Only save the internal thought in the node if thinking mode was enabled
+        saved_thought = internal_thought if thinking_mode else None
+        ai_node = conversation.add_message(ai_response, "AI", current_model_name, saved_thought)
         save_conversation(conversation, CONVERSATIONS_DIR)
         save_time = time.time() - save_start
         app_logger.info(f"Saving conversation took {save_time:.4f} seconds")
@@ -662,11 +677,12 @@ def get_ai_response():
     data = request.json
     conversation_id = data['conversation_id']
     model_name = data['model']
+    thinking_mode = data.get('thinking_mode', False)
     
     if current_conversation.id != conversation_id:
         current_conversation = load_conversation(conversation_id, CONVERSATIONS_DIR)
     
-    return Response(generate_ai_response(current_conversation, model_name), mimetype='application/json')
+    return Response(generate_ai_response(current_conversation, model_name, thinking_mode), mimetype='application/json')
 
 # Regenerate AI response for a specific message
 @app.route('/message/regenerate', methods=['POST'])
@@ -674,12 +690,13 @@ def regenerate_response():
     data = request.json
     node_id = data['node_id']
     model_name = data['model']
+    thinking_mode = data.get('thinking_mode', False)
     
     if current_conversation:
         node_to_regenerate = current_conversation.find_node(node_id)
         if node_to_regenerate and node_to_regenerate.parent:
             current_conversation.tree.current_node = node_to_regenerate.parent
-            return Response(generate_ai_response(current_conversation, model_name), mimetype='application/json')
+            return Response(generate_ai_response(current_conversation, model_name, thinking_mode), mimetype='application/json')
     
     return jsonify({'success': False, 'error': 'Failed to regenerate response'}), 400
 
