@@ -1861,6 +1861,18 @@
                   clearMessagesBelow(editData.new_node_id);
 
                   if (isHumanMessage) {
+                    // Check if a model is selected before requesting an AI response
+                    if (!currentModel || currentModel.trim() === "") {
+                      addMessage({
+                        id: Date.now().toString(),
+                        content:
+                          "Please select an AI model from the dropdown menu to generate a response to your edited message.",
+                        sender: "System",
+                        timestamp: new Date().toISOString(),
+                      });
+                      return; // Skip generating AI response
+                    }
+
                     const aiResponse = await fetch(
                       "/conversation/get_ai_response",
                       {
@@ -1934,6 +1946,18 @@
 
       async function regenerateResponse(messageContainer) {
         const nodeId = messageContainer.dataset.nodeId;
+
+        // Check if a model is selected
+        if (!currentModel || currentModel.trim() === "") {
+          addMessage({
+            id: Date.now().toString(),
+            content:
+              "Please select an AI model from the dropdown menu before regenerating a response.",
+            sender: "System",
+            timestamp: new Date().toISOString(),
+          });
+          return; // Exit the function early without removing the message
+        }
 
         // First remove any associated AI thought message (with ID "thought-" + nodeId)
         const thoughtId = "thought-" + nodeId;
@@ -2101,6 +2125,18 @@
         if (isWaitingForResponse) return;
         const message = userInput.value.trim();
         if (message) {
+          // Check if a model is selected
+          if (!currentModel || currentModel.trim() === "") {
+            addMessage({
+              id: Date.now().toString(),
+              content:
+                "Please select an AI model from the dropdown menu before sending a message.",
+              sender: "System",
+              timestamp: new Date().toISOString(),
+            });
+            return; // Exit the function early without clearing the message
+          }
+
           setWaitingState(true);
           userInput.value = "";
           userInput.style.height = "auto";
