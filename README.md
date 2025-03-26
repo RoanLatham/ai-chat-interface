@@ -6,11 +6,11 @@
 
 <p align="center">
   A privacy-focused conversational AI app powered by local LLMs, featuring branching conversations
-  Built with 1 HTML file and 1 Python server
+  Built with 1 HTML file and 1 Python script
 </p>
 
 <p align="center">
-  <img alt="GitHub License" src="https://img.shields.io/github/license/RoanLatham/ai-chat-interface">
+  <img alt="GitHub License" src="https://img.shields.io/badge/License-MIT-green">
   <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/RoanLatham/ai-chat-interface">
   <img alt="GitHub issues" src="https://img.shields.io/github/issues/RoanLatham/ai-chat-interface">
 </p>
