@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./icon/AII-icon.png" alt="Local AI Chat Logo" width="200"/>
+  <img src="./icon/AII-icon.ico" alt="Local AI Chat Logo" width="200"/>
 </p>
 
 <h1 align="center">Local AI Chat</h1>
@@ -101,7 +101,6 @@ After installation:
 Compatible GGUF models can be downloaded from:
 
 - [Hugging Face](https://huggingface.co/models?sort=downloads&search=gguf)
-- [TheBloke's Models](https://huggingface.co/TheBloke)
 
 Recommended starter models:
 
@@ -119,38 +118,54 @@ Choose quantization level based on your hardware capabilities:
 
 ## Usage
 
-### Starting the Application
+<details>
+<summary>Starting the Application</summary>
 
 1. Launch the application using the desktop shortcut or executable
 2. A browser window will automatically open to `http://localhost:5000`
 3. If the browser doesn't open automatically, manually navigate to this address
 
-### Basic Features
+</details>
 
-#### Creating a New Conversation
+<details>
+<summary>Basic Features</summary>
+
+<details>
+<summary>Creating a New Conversation</summary>
 
 1. Click on the "New Conversation" button in the sidebar
 2. Start typing a message and press Enter or click Send
 3. Wait for the AI to generate a response
 
-#### Working with Branches
+</details>
+
+<details>
+<summary>Working with Branches</summary>
 
 1. To edit a message and create a new branch, click the "Edit" button on any message
 2. To regenerate an AI response, click the "Regenerate" button
 3. Navigate between branches using the left/right arrows that appear at branching points
 
-#### Using Different Models
+</details>
+
+<details>
+<summary>Using Different Models</summary>
 
 1. Select a model from the dropdown menu in the upper-right corner
 2. The model will be loaded when you send your next message
 
-#### Customizing System Prompts
+</details>
+
+<details>
+<summary>Customizing System Prompts</summary>
 
 1. Click the "Edit System Prompt" button in the header
 2. Modify the prompt as desired
 3. Click "Save" to apply the changes
 
-### Advanced Features
+</details>
+
+</details>
 
 <details>
 <summary>Managing Conversations</summary>
@@ -170,6 +185,8 @@ Choose quantization level based on your hardware capabilities:
 
 </details>
 
+</details>
+
 ## Documentation
 
 - [Local AI Chat App Documentation](./Docs/local_ai_chat_app_documentation.md) - Core application functionality
@@ -183,17 +200,18 @@ Choose quantization level based on your hardware capabilities:
 
 ```
 ai-chat-interface/
-├── ai_models/           # AI model files (.gguf)
-├── build_tools/         # Packaging and build scripts
-├── conversations/       # Saved conversation files
-├── docs/                # Documentation files
-├── icon/                # Application icons
-├── logs/                # Application logs
-├── local-ai-chat-app.py # Main application
-├── conversation.py      # Conversation data structure
-├── chat-interface.html  # Web interface
-├── system-prompt.txt    # Top-level AI system prompt
-└── requirements.txt     # Python dependencies
+├── ai_models/             # AI model files (.gguf)
+├── build_tools/           # Packaging and build scripts
+├── conversations/         # Saved conversation files
+├── example_conversations/ # Conversation files included in the build process
+├── docs/                  # Documentation files
+├── icon/                  # Application icons
+├── logs/                  # Application logs
+├── local-ai-chat-app.py   # Main application
+├── conversation.py        # Conversation data structure
+├── chat-interface.html    # Web interface
+├── system-prompt.txt      # Top-level AI system prompt
+└── requirements.txt       # Python dependencies
 ```
 
 ### Building the Application
