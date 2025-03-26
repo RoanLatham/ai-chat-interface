@@ -405,6 +405,28 @@ def load_model(model_name):
 def get_available_models():
     return [f for f in os.listdir(MODELS_DIR) if f.endswith('.gguf')]
 
+# Validate model selection and return appropriate error response if validation fails
+def validate_model_selection(model_name, operation_name="operation"):
+
+    # Check if model is provided and valid
+    if not model_name or model_name.strip() == '':
+        app_logger.warning(f"No model selected for {operation_name}")
+        return False, jsonify({
+            'status': 'error',
+            'message': 'No AI model selected. Please select a model from the dropdown menu.'
+        }), 400
+    
+    # Check if the model exists in the available models
+    model_files = get_available_models()
+    if model_name not in model_files:
+        app_logger.warning(f"Selected model '{model_name}' not found in available models for {operation_name}")
+        return False, jsonify({
+            'status': 'error',
+            'message': f'Model "{model_name}" not found. Please select an available model.'
+        }), 400
+    
+    return True, None
+
 # Serve the main HTML page
 @app.route('/')
 def index():
@@ -638,6 +660,12 @@ def add_user_message():
     data = request.json
     user_input = data['message']
     model_name = data['model']
+    
+    # Validate model selection
+    is_valid, error_response = validate_model_selection(model_name, "message generation")
+    if not is_valid:
+        return error_response
+    
     if 'system_prompt' in data:
         current_system_prompt = data['system_prompt']
     
@@ -687,6 +715,11 @@ def get_ai_response():
     model_name = data['model']
     thinking_mode = data.get('thinking_mode', False)
     
+    # Validate model selection
+    is_valid, error_response = validate_model_selection(model_name, "AI response generation")
+    if not is_valid:
+        return error_response
+    
     if current_conversation.id != conversation_id:
         current_conversation = load_conversation(conversation_id, CONVERSATIONS_DIR)
     
@@ -699,6 +732,11 @@ def regenerate_response():
     node_id = data['node_id']
     model_name = data['model']
     thinking_mode = data.get('thinking_mode', False)
+    
+    # Validate model selection
+    is_valid, error_response = validate_model_selection(model_name, "response regeneration")
+    if not is_valid:
+        return error_response
     
     if current_conversation:
         node_to_regenerate = current_conversation.find_node(node_id)
