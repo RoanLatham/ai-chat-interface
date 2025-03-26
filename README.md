@@ -33,20 +33,24 @@
   <a href="#license">License</a>
 </p>
 
-## Key Features
+<details open>
+<summary><h2>✨ Key Features</h2></summary>
 
-- **Completely Local & Private** - All processing happens on your machine with no data shared externally
-- **Multiple AI Model Support** - Use different GGUF-format models suited to your hardware and requirements
-- **Branching Conversations** - Explore different responses and maintain multiple conversation paths
-- **Custom System Prompts** - Tailor your AI's behavior and capabilities
-- **Markdown Rendering** - Beautiful formatting of AI responses with syntax highlighting
-- **Code Syntax Highlighting** - Clear, readable code snippets in responses
-- **Web-Based Interface** - Intuitive browser UI with no installation requirements
-- **Conversation Management** - Save, load, and organize your conversation history
-- **Versioning System** - Ensures backward compatibility of conversation files
-- **Developer Tools** - Advanced editing and management for conversation files
+- **🔒 Completely Local & Private** - All processing happens on your machine with no data shared externally
+- **🧠 Multiple AI Model Support** - Use different GGUF-format models suited to your hardware and requirements
+- **🌿 Branching Conversations** - Explore different responses and maintain multiple conversation paths
+- **⚙️ Custom System Prompts** - Tailor your AI's behavior and capabilities
+- **📝 Markdown Rendering** - Beautiful formatting of AI responses with syntax highlighting
+- **💻 Code Syntax Highlighting** - Clear, readable code snippets in responses
+- **🌐 Web-Based Interface** - Intuitive browser UI with no installation requirements
+- **💾 Conversation Management** - Save, load, and organize your conversation history
+- **🔄 Versioning System** - Ensures backward compatibility of conversation files
+- **🛠️ Developer Tools** - Advanced editing and management for conversation files
 
-## Installation
+</details>
+
+<details open>
+<summary><h2>📦 Installation</h2></summary>
 
 ### Prerequisites
 
@@ -56,19 +60,26 @@
 
 ### Windows Only: Packaged Versions
 
-#### Portable Version
+<details>
+<summary><h4>💼 Portable Version</h4></summary>
 
 1. Download the portable ZIP from the [Releases](https://github.com/RoanLatham/ai-chat-interface/releases) page
 2. Extract to any location
 3. Run `LocalAIChat.exe`
 
-#### Windows Installer
+</details>
+
+<details>
+<summary><h4>💿 Windows Installer</h4></summary>
 
 1. Download the latest installer from the [Releases](https://github.com/RoanLatham/ai-chat-interface/releases) page
 2. Run the installer and follow the on-screen instructions
 3. Launch the application from the Start Menu or Desktop shortcut
 
-### All Platforms: From Source
+</details>
+
+<details>
+<summary><h3>📦 All Platforms: From Source</h3></summary>
 
 This method works on Windows, macOS, and Linux.
 
@@ -95,7 +106,10 @@ pip install -r requirements.txt
 python local-ai-chat-app.py
 ```
 
-### Setting Up AI Models
+</details>
+
+<details>
+<summary><h4>🤖 Setting Up AI Models</h4></summary>
 
 After installation:
 
@@ -104,7 +118,7 @@ After installation:
 3. Select your model from the dropdown in the top center of the page
 
 <details>
-<summary>Where to find compatible models</summary>
+<summary>🔍 Where to find compatible models</summary>
 
 Compatible GGUF models can be downloaded from:
 
@@ -124,10 +138,15 @@ Choose quantization level based on your hardware capabilities:
 
 </details>
 
-## Usage
+</details>
+
+</details>
+
+<details open>
+<summary><h2>🚀 Usage</h2></summary>
 
 <details>
-<summary>Starting the Application</summary>
+<summary><h4>🚀 Starting the Application</h4></summary>
 
 1. Launch the application using the desktop shortcut or executable
 2. A browser window will automatically open to `http://localhost:5000`
@@ -136,10 +155,10 @@ Choose quantization level based on your hardware capabilities:
 </details>
 
 <details>
-<summary>Basic Features</summary>
+<summary><h4>✨ Features</h4></summary>
 
 <details>
-<summary>Creating a New Conversation</summary>
+<summary>💬 Creating a New Conversation</summary>
 
 1. Click on the "New Conversation" button in the sidebar
 2. Start typing a message and press Enter or click Send
@@ -148,7 +167,7 @@ Choose quantization level based on your hardware capabilities:
 </details>
 
 <details>
-<summary>Working with Branches</summary>
+<summary>🌿 Working with Branches</summary>
 
 1. To edit a message and create a new branch, click the "Edit" button on any message
 2. To regenerate an AI response, click the "Regenerate" button
@@ -157,7 +176,7 @@ Choose quantization level based on your hardware capabilities:
 </details>
 
 <details>
-<summary>Using Different Models</summary>
+<summary>🔀 Using Different Models</summary>
 
 1. Select a model from the dropdown menu in the upper-right corner
 2. The model will be loaded when you send your next message
@@ -165,7 +184,7 @@ Choose quantization level based on your hardware capabilities:
 </details>
 
 <details>
-<summary>Customizing System Prompts</summary>
+<summary>⚙️ Customizing System Prompts</summary>
 
 1. Click the "Edit System Prompt" button in the header
 2. Modify the prompt as desired
@@ -173,19 +192,19 @@ Choose quantization level based on your hardware capabilities:
 
 </details>
 
+<details>
+<summary><h4>📂 Managing Conversations</h4></summary>
+
+- **✏️ Rename**: Click the menu icon next to a conversation and select "Rename"
+- **🗑️ Delete**: Click the menu icon next to a conversation and select "Delete"
+- **🔀 Switch Branches**: Navigate to a specific branch using the branch indicators in the chat
+
+</details>
+
 </details>
 
 <details>
-<summary>Managing Conversations</summary>
-
-- **Rename**: Click the menu icon next to a conversation and select "Rename"
-- **Delete**: Click the menu icon next to a conversation and select "Delete"
-- **Switch Branches**: Navigate to a specific branch using the branch indicators in the chat
-
-</details>
-
-<details>
-<summary>Troubleshooting</summary>
+<summary><h4>⚠️ Troubleshooting</h4></summary>
 
 - If models aren't appearing, ensure they're placed in the `ai_models` directory with a `.gguf` extension
 - For slow responses, try a smaller or more optimized model
@@ -195,16 +214,21 @@ Choose quantization level based on your hardware capabilities:
 
 </details>
 
-## Documentation
+<details open>
+<summary><h2>📝 Documentation</h2></summary>
 
 - [Local AI Chat App Documentation](./Docs/local_ai_chat_app_documentation.md) - Core application functionality
 - [Conversation Module Documentation](./Docs/conversation_module_documentation.md) - Conversation data structure
 - [Conversation Versioning Documentation](./Docs/conversation_versioning.md) - File compatibility system
 - [Conversation Editor Documentation](./Docs/conversation_editor_documentation.md) - Developer tools
 
-## Development
+</details>
 
-### Project Structure
+<details open>
+<summary><h2>💻 Development</h2></summary>
+
+<details>
+<summary><h4>📁 Project Structure</h4></summary>
 
 ```
 ai-chat-interface/
@@ -222,7 +246,10 @@ ai-chat-interface/
 └── requirements.txt       # Python dependencies
 ```
 
-### Building the Application
+</details>
+
+<details>
+<summary><h4>🔨 Building the Application</h4></summary>
 
 ```bash
 # Navigate to the build_tools directory
@@ -238,7 +265,10 @@ python build_master.bat --no-installer
 python build_master.bat --skip-deps
 ```
 
-### Conversation Editor Tool
+</details>
+
+<details>
+<summary><h4>🔧 Conversation Editor Tool</h4></summary>
 
 The project includes a developer tool for managing conversation files:
 
@@ -255,7 +285,12 @@ python conversation_editor.py path/to/conversation.pickle --set-version 1.1.0
 
 See [Conversation Editor Documentation](./Docs/conversation_editor_documentation.md) for more details
 
-## Contributing
+</details>
+
+</details>
+
+<details open>
+<summary><h2>🤝 Contributing</h2></summary>
 
 Contributions to improve Local AI Chat are welcome! Here's how you can help:
 
@@ -270,19 +305,30 @@ Before submitting, please ensure:
 - Your code follows the project's coding style
 - You've added/updated documentation as necessary
 
-## License
+</details>
+
+<details open>
+<summary><h2>📄 License</h2></summary>
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgements
+</details>
+
+<details open>
+<summary><h2>👏 Acknowledgements</h2></summary>
 
 - [llama-cpp-python](https://github.com/abetlen/llama-cpp-python) - Python bindings for llama.cpp
 - [Flask](https://flask.palletsprojects.com/) - Server framework
 - [Marked.js](https://marked.js.org/) - Markdown parser
 - [Highlight.js](https://highlightjs.org/) - Syntax highlighting
 
+</details>
+
 ---
 
-<p align="center">
-  Made with ❤️ by Roan Latham
-</p>
+<div align="center">
+Made with ❤️ by Roan Latham
+
+[Report Bug](https://github.com/RoanLatham/ai-chat-interface/issues) · [Request Feature](https://github.com/RoanLatham/ai-chat-interface/issues)
+
+</div>
