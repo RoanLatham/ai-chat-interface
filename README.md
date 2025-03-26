@@ -18,6 +18,12 @@
 </p>
 
 <p align="center">
+  <img alt="Flask" src="https://img.shields.io/badge/Flask-v3.0.0-blue">
+  <img alt="llama-cpp-python" src="https://img.shields.io/badge/llama--cpp--python-v0.3.5-blue">
+  <img alt="Python" src="https://img.shields.io/badge/Python-v3.11.7-blue">
+</p>
+
+<p align="center">
   <a href="#key-features">Key Features</a> •
   <a href="#installation">Installation</a> •
   <a href="#usage">Usage</a> •
