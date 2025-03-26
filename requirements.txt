@@ -1,4 +1,4 @@
 flask>=3.0.0
 llama-cpp-python>=0.3.5
 pyinstaller>=5.0.0
-dataclasses; python_version < '3.7'
+dataclasses; python_version > '3.7'

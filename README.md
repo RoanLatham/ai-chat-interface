@@ -51,7 +51,7 @@
 ### Prerequisites
 
 - Windows 10/11 (for packaged versions) or any Windows/Linux/macOS system (for source installation)
-- Python 3.8 or higher (if running from source)
+- Python minimum 3.6 or higher (if running from source)
 - GGUF-format language models
 
 ### Windows Only: Packaged Versions
