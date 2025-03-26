@@ -1831,6 +1831,18 @@
 
               const newContent = textarea.value;
               try {
+                // If this is an AI message, we need to remove any associated thought message first
+                if (!isHumanMessage) {
+                  // Check if there's an associated thought message (with ID "thought-" + nodeId), if so, remove it
+                  const thoughtId = "thought-" + nodeId;
+                  const thoughtElement = document.querySelector(
+                    `[data-node-id="${thoughtId}"]`
+                  );
+                  if (thoughtElement) {
+                    thoughtElement.remove();
+                  }
+                }
+
                 const editResponse = await fetch("/message/edit", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
