@@ -5,6 +5,10 @@ REM Get the root directory (parent of build_tools)
 FOR %%G IN ("%~dp0..") DO SET "BuildRootDir=%%~fG"
 echo Root directory: %BuildRootDir%
 
+REM Change current directory to the root directory
+cd /d "%BuildRootDir%"
+echo Current directory set to: %CD%
+
 REM Create Output directory in the root directory
 IF NOT EXIST "%BuildRootDir%\Output" mkdir "%BuildRootDir%\Output"
 
@@ -30,7 +34,7 @@ SET "BuildRootDir=%BuildRootDir%"
 
 REM Run Inno Setup compiler
 echo Running Inno Setup compiler...
-"%InnoSetupPath%" /O"%BuildRootDir%\Output" "%~dp0installer_script.iss"
+"%InnoSetupPath%" /O"%BuildRootDir%\Output" "%BuildRootDir%\build_tools\installer_script.iss"
 
 REM Inno Setup can return exit code 1 for warnings, but the installer still builds
 IF %ERRORLEVEL% NEQ 0 (

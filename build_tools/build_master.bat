@@ -6,6 +6,10 @@ REM Get the root directory (parent of build_tools)
 FOR %%G IN ("%~dp0..") DO SET "BuildRootDir=%%~fG"
 echo Root directory: %BuildRootDir%
 
+REM Change current directory to the root directory
+cd /d "%BuildRootDir%"
+echo Current directory set to: %CD%
+
 REM Create Output directory in the root directory
 IF NOT EXIST "%BuildRootDir%\Output" mkdir "%BuildRootDir%\Output"
 echo Created output directory: %BuildRootDir%\Output
@@ -34,8 +38,8 @@ echo Build arguments: %BUILD_ARGS%
 REM Build the application
 IF %SKIP_APP_BUILD%==0 (
     echo Building Python application...
-    REM Fix the path to build.py - %~dp0 already points to build_tools directory
-    python "%~dp0build.py" --clean %BUILD_ARGS%
+    REM Use absolute paths for the build script
+    python "%BuildRootDir%\build_tools\build.py" --clean %BUILD_ARGS%
     IF %ERRORLEVEL% NEQ 0 (
         echo Application build failed with error code %ERRORLEVEL%!
         echo Check the error messages above for details.
@@ -54,7 +58,7 @@ REM Create the installer
 IF %SKIP_INSTALLER%==0 (
     echo Building installer...
     
-    REM Explicitly call the build_installer.bat in the build_tools directory
+    REM Explicitly call the build_installer.bat in the build_tools directory with absolute path
     CALL "%BuildRootDir%\build_tools\build_installer.bat"
     
     IF %ERRORLEVEL% NEQ 0 (

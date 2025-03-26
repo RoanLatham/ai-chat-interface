@@ -64,13 +64,26 @@ def build_application():
     print("Building Python Application...")
     print("=" * 60)
     
+    root_dir = get_root_dir()
+    build_script = os.path.join(root_dir, "build_tools", "build.py")
+    
+    # Save current directory
+    original_dir = os.getcwd()
+    
     try:
-        build_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "build.py")
+        # Change to root directory before running build script
+        os.chdir(root_dir)
+        print(f"Build_all: Changed working directory to: {root_dir}")
+        
+        # Use absolute path to build script
         subprocess.check_call([sys.executable, build_script, "--clean"])
         return True
     except subprocess.CalledProcessError as e:
-        print(f"Error: Failed to build application: {e}")
+        print(f"Build_all: Error: Failed to build application: {e}")
         return False
+    finally:
+        # Restore original directory
+        os.chdir(original_dir)
 
 def create_installer():
     """Create an installer using Inno Setup (Windows only)"""
@@ -81,6 +94,8 @@ def create_installer():
     print("\n" + "=" * 60)
     print("Creating Windows Installer...")
     print("=" * 60)
+    
+    root_dir = get_root_dir()
     
     # Find Inno Setup compiler
     inno_paths = [
@@ -98,14 +113,29 @@ def create_installer():
         print("Error: Inno Setup not found. Skipping installer creation.")
         return False
     
-    # Run Inno Setup Compiler
+    # Save current directory
+    original_dir = os.getcwd()
+    
     try:
-        installer_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "installer_script.iss")
-        subprocess.check_call([inno_path, installer_script])
+        # Change to root directory before running installer script
+        os.chdir(root_dir)
+        print(f"Build_all: Changed working directory to: {root_dir}")
+        
+        # Set environment variable for the installer script
+        os.environ["BuildRootDir"] = root_dir
+        
+        # Use absolute path to installer script
+        installer_script = os.path.join(root_dir, "build_tools", "installer_script.iss")
+        cmd = [inno_path, f"/O{os.path.join(root_dir, 'Output')}", installer_script]
+        print(f"Build_all: Running command: {' '.join(cmd)}")
+        subprocess.check_call(cmd)
         return True
     except subprocess.CalledProcessError as e:
-        print(f"Error: Failed to create installer: {e}")
+        print(f"Build_all: Error: Failed to create installer: {e}")
         return False
+    finally:
+        # Restore original directory
+        os.chdir(original_dir)
 
 def create_distribution_package():
     """Create a zip file of the application for non-Windows platforms"""
@@ -120,21 +150,42 @@ def create_distribution_package():
     import zipfile
     root_dir = get_root_dir()
     
+    # Save current directory
+    original_dir = os.getcwd()
+    
     try:
+        # Change to root directory
+        os.chdir(root_dir)
+        print(f"Build_all: Changed working directory to: {root_dir}")
+        
         app_dir = os.path.join(root_dir, "dist", "LocalAIChat")
         zip_filename = os.path.join(root_dir, "dist", "LocalAIChat.zip")
         
+        # Check if paths exist
+        if not os.path.exists(app_dir):
+            print(f"Build_all: Error: Application directory not found at: {app_dir}")
+            return False
+            
+        print(f"Build_all: Creating zip file: {zip_filename}")
+        if os.path.exists(zip_filename):
+            os.remove(zip_filename)
+            
         with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for root, dirs, files in os.walk(app_dir):
                 for file in files:
                     file_path = os.path.join(root, file)
-                    zipf.write(file_path, os.path.relpath(file_path, os.path.dirname(app_dir)))
+                    rel_path = os.path.relpath(file_path, os.path.dirname(app_dir))
+                    print(f"Build_all: Adding: {rel_path}")
+                    zipf.write(file_path, rel_path)
         
-        print(f"Distribution package created: {zip_filename}")
+        print(f"Build_all: Distribution package created: {zip_filename}")
         return True
     except Exception as e:
-        print(f"Error: Failed to create distribution package: {e}")
+        print(f"Build_all: Error: Failed to create distribution package: {e}")
         return False
+    finally:
+        # Restore original directory
+        os.chdir(original_dir)
 
 def main():
     parser = argparse.ArgumentParser(description="Build the Local AI Chat application and installer")
@@ -147,8 +198,8 @@ def main():
     print("=" * 60)
     print("Local AI Chat - Complete Build Process")
     print("=" * 60)
-    print(f"Platform: {platform.system()} {platform.release()}")
-    print(f"Python: {sys.version.split()[0]}")
+    print(f"Build_all: Platform: {platform.system()} {platform.release()}")
+    print(f"Build_all: Python: {sys.version.split()[0]}")
     
     # Ensure we have all requirements
     if not check_requirements():
@@ -182,20 +233,20 @@ def main():
     # Display completion message
     elapsed_time = time.time() - start_time
     print("\n" + "=" * 60)
-    print(f"Build process completed in {elapsed_time:.2f} seconds!")
+    print(f"Build_all: Build process completed in {elapsed_time:.2f} seconds!")
     
     if app_built:
         app_path = os.path.abspath(os.path.join(root_dir, "dist", "LocalAIChat"))
-        print(f"Application build available at: {app_path}")
+        print(f"Build_all: Application build available at: {app_path}")
         
         if not args.no_installer and platform.system() == "Windows":
             installer_path = os.path.abspath(os.path.join(root_dir, "Output", "LocalAIChat_Setup.exe"))
             if os.path.exists(installer_path):
-                print(f"Installer available at: {installer_path}")
+                print(f"Build_all: Installer available at: {installer_path}")
         elif not args.no_installer:
             zip_path = os.path.abspath(os.path.join(root_dir, "dist", "LocalAIChat.zip"))
             if os.path.exists(zip_path):
-                print(f"Distribution package available at: {zip_path}")
+                print(f"Build_all: Distribution package available at: {zip_path}")
     
     print("=" * 60)
 

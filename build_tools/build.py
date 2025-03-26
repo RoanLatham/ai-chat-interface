@@ -34,7 +34,7 @@ def ensure_dependencies():
     ]
     
     for package in required_packages:
-        print(f"Ensuring {package} is installed...")
+        print(f"Build: Ensuring {package} is installed...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", package])
     
     print("All dependencies installed successfully!")
@@ -86,7 +86,7 @@ def create_user_data_directories():
     conversations_dir = os.path.join(output_dir, "conversations")
     
     if os.path.exists(example_conversations_dir) and os.path.isdir(example_conversations_dir):
-        print(f"Copying example conversations from {example_conversations_dir}")
+        print(f"Build: Copying example conversations from {example_conversations_dir}")
         if os.path.exists(conversations_dir):
             shutil.rmtree(conversations_dir)
         shutil.copytree(example_conversations_dir, conversations_dir)
@@ -127,47 +127,61 @@ def build_executable():
     print("Building executable with PyInstaller...")
     root_dir = get_root_dir()
     
-    # Check if we have a spec file
-    spec_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "LocalAIChat.spec")
-    if os.path.exists(spec_file):
-        print("Using existing spec file for build...")
-        subprocess.check_call(["pyinstaller", spec_file, "--clean", "--noconfirm"])
+    # Save current directory to restore it later
+    original_dir = os.getcwd()
+    
+    try:
+        # Always change to root directory before building
+        os.chdir(root_dir)
+        
+        # Check if we have a spec file
+        spec_file = os.path.join(root_dir, "build_tools", "LocalAIChat.spec")
+        if os.path.exists(spec_file):
+            print(f"Build: Using existing spec file for build: {spec_file}")
+            # Call PyInstaller with absolute path to spec file
+            subprocess.check_call(["pyinstaller", spec_file, "--clean", "--noconfirm", "--workpath", os.path.join(root_dir, "build"), "--distpath", os.path.join(root_dir, "dist")])
+            print("Executable built successfully!")
+            return
+        
+        # If no spec file, use the command line arguments approach
+        # Define PyInstaller command with absolute paths
+        pyinstaller_args = [
+            "pyinstaller",
+            "--name=LocalAIChat",
+            "--onedir",
+            "--console",  # Show console window
+            "--noconfirm",  # Skip confirmation prompts
+            "--clean",
+            f"--workpath={os.path.join(root_dir, 'build')}",
+            f"--distpath={os.path.join(root_dir, 'dist')}",
+            f"--additional-hooks-dir={os.path.join(root_dir, 'build_tools')}",  # Look for hook-llama in the build_tools directory
+            f"--add-data={os.path.join(root_dir, 'system-prompt.txt')}{os.pathsep}.",
+            f"--add-data={os.path.join(root_dir, 'chat-interface.html')}{os.pathsep}.",
+            f"--add-data={os.path.join(root_dir, 'conversation.py')}{os.pathsep}.",
+        ]
+        
+        # Add icon directory if it exists
+        if os.path.exists(os.path.join(root_dir, "icon")):
+            pyinstaller_args.append(f"--add-data={os.path.join(root_dir, 'icon')}{os.pathsep}icon")
+        
+        # Add Windows icon if it exists
+        if platform.system() == "Windows":
+            if os.path.exists(os.path.join(root_dir, "icon", "AII-console-icon.ico")):
+                pyinstaller_args.append(f"--icon={os.path.join(root_dir, 'icon', 'AII-console-icon.ico')}")
+            elif os.path.exists(os.path.join(root_dir, "icon", "AII-icon.ico")):
+                pyinstaller_args.append(f"--icon={os.path.join(root_dir, 'icon', 'AII-icon.ico')}")
+        
+        # Add the main script with absolute path
+        pyinstaller_args.append(os.path.join(root_dir, "local-ai-chat-app.py"))
+        
+        # Run PyInstaller
+        print(f"Build: Running PyInstaller with args: {' '.join(pyinstaller_args)}")
+        subprocess.check_call(pyinstaller_args)
+        
         print("Executable built successfully!")
-        return
-    
-    # If no spec file, use the command line arguments approach
-    # Define PyInstaller command
-    pyinstaller_args = [
-        "pyinstaller",
-        "--name=LocalAIChat",
-        "--onedir",
-        "--console",  # Show console window
-        "--noconfirm",  # Skip confirmation prompts
-        "--clean",
-        "--additional-hooks-dir=.",  # Look for hook-llama in the current directory
-        f"--add-data={os.path.join(root_dir, 'system-prompt.txt')}{os.pathsep}.",
-        f"--add-data={os.path.join(root_dir, 'chat-interface.html')}{os.pathsep}.",
-        f"--add-data={os.path.join(root_dir, 'conversation.py')}{os.pathsep}.",
-    ]
-    
-    # Add icon directory if it exists
-    if os.path.exists(os.path.join(root_dir, "icon")):
-        pyinstaller_args.append(f"--add-data={os.path.join(root_dir, 'icon')}{os.pathsep}icon")
-    
-    # Add Windows icon if it exists
-    if platform.system() == "Windows":
-        if os.path.exists(os.path.join(root_dir, "icon/AII-console-icon.ico")):
-            pyinstaller_args.append(f"--icon={os.path.join(root_dir, 'icon/AII-console-icon.ico')}")
-        elif os.path.exists(os.path.join(root_dir, "icon/AII-icon.ico")):
-            pyinstaller_args.append(f"--icon={os.path.join(root_dir, 'icon/AII-icon.ico')}")
-    
-    # Add the main script
-    pyinstaller_args.append(os.path.join(root_dir, "local-ai-chat-app.py"))
-    
-    # Run PyInstaller
-    subprocess.check_call(pyinstaller_args)
-    
-    print("Executable built successfully!")
+    finally:
+        # Restore original directory
+        os.chdir(original_dir)
 
 def create_launcher():
     """Create a launcher script/batch file for easy startup"""
@@ -197,7 +211,7 @@ def create_launcher():
         # Make the launcher executable
         os.chmod(launcher_path, 0o755)
     
-    print(f"Launcher script created at: {launcher_path}")
+    print(f"Build: Launcher script created at: {launcher_path}")
 
 def create_readme():
     """Create a README file for the packaged application"""
@@ -220,7 +234,7 @@ def create_readme():
         f.write("Support:\n")
         f.write("If you encounter any issues, please check the log files in the 'logs' folder.\n")
     
-    print(f"README file created at: {readme_path}")
+    print(f"Build: README file created at: {readme_path}")
 
 def main():
     parser = argparse.ArgumentParser(description="Build the Local AI Chat application")
@@ -251,7 +265,7 @@ def main():
     print("\n" + "=" * 60)
     print("Build completed successfully!")
     root_dir = get_root_dir()
-    print(f"Output directory: {os.path.abspath(os.path.join(root_dir, 'dist', 'LocalAIChat'))}")
+    print(f"Build: Output directory: {os.path.abspath(os.path.join(root_dir, 'dist', 'LocalAIChat'))}")
     print("=" * 60)
 
 if __name__ == "__main__":
