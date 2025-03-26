@@ -1922,7 +1922,19 @@
 
       async function regenerateResponse(messageContainer) {
         const nodeId = messageContainer.dataset.nodeId;
-        messageContainer.innerHTML = "";
+
+        // First remove any associated AI thought message (with ID "thought-" + nodeId)
+        const thoughtId = "thought-" + nodeId;
+        const thoughtElement = document.querySelector(
+          `[data-node-id="${thoughtId}"]`
+        );
+        if (thoughtElement) {
+          thoughtElement.remove();
+        }
+
+        // Then remove the AI message container itself
+        messageContainer.remove();
+
         setWaitingState(true);
 
         try {
@@ -1956,16 +1968,6 @@
             } else if (data.status === "thinking") {
               removeLoadingMessage();
               removeTypingIndicator();
-
-              // Remove previous thought message if it exists
-              if (displayedThoughtId) {
-                const previousThought = document.querySelector(
-                  `[data-node-id="${displayedThoughtId}"]`
-                );
-                if (previousThought) {
-                  previousThought.remove();
-                }
-              }
 
               // Create a temporary thought message ID
               displayedThoughtId = "thinking-" + Date.now().toString();
