@@ -33,6 +33,8 @@
   <a href="#license">License</a>
 </p>
 
+---
+
 <details open>
 <summary><h2>✨ Key Features</h2></summary>
 
@@ -48,6 +50,8 @@
 - **🛠️ Developer Tools** - Advanced editing and management for conversation files
 
 </details>
+
+---
 
 <details open>
 <summary><h2>📦 Installation</h2></summary>
@@ -142,6 +146,8 @@ Choose quantization level based on your hardware capabilities:
 
 </details>
 
+---
+
 <details open>
 <summary><h2>🚀 Usage</h2></summary>
 
@@ -214,6 +220,8 @@ Choose quantization level based on your hardware capabilities:
 
 </details>
 
+---
+
 <details open>
 <summary><h2>📝 Documentation</h2></summary>
 
@@ -223,6 +231,8 @@ Choose quantization level based on your hardware capabilities:
 - [Conversation Editor Documentation](./Docs/conversation_editor_documentation.md) - Developer tools
 
 </details>
+
+---
 
 <details open>
 <summary><h2>💻 Development</h2></summary>
@@ -289,6 +299,8 @@ See [Conversation Editor Documentation](./Docs/conversation_editor_documentation
 
 </details>
 
+---
+
 <details open>
 <summary><h2>🤝 Contributing</h2></summary>
 
@@ -307,12 +319,16 @@ Before submitting, please ensure:
 
 </details>
 
+---
+
 <details open>
 <summary><h2>📄 License</h2></summary>
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 </details>
+
+---
 
 <details open>
 <summary><h2>👏 Acknowledgements</h2></summary>
