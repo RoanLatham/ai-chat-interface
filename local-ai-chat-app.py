@@ -195,6 +195,9 @@ def generate_ai_response(conversation: Conversation, model_name: str, thinking_m
     yield json.dumps({"status": "generating"})
 
     try:
+        # Store the internal thought for inclusion in the final response
+        internal_thought = None
+        
         # Generate internal thought only if thinking mode is enabled
         if thinking_mode:
             thought_start = time.time()
@@ -203,7 +206,7 @@ def generate_ai_response(conversation: Conversation, model_name: str, thinking_m
             app_logger.info(f"Internal thought generation took {thought_time:.4f} seconds")
             
             # Show the internal thought as a separate message
-            thinking_message = f"💡︎ **AI Thinking Process:**\n\n{internal_thought}"
+            thinking_message = internal_thought
             yield json.dumps({
                 "status": "thinking",
                 "thinking": thinking_message,
@@ -236,7 +239,8 @@ def generate_ai_response(conversation: Conversation, model_name: str, thinking_m
             "status": "complete",
             "response": ai_response,
             "node_id": ai_node.id,
-            "timestamp": ai_node.timestamp.isoformat()
+            "timestamp": ai_node.timestamp.isoformat(),
+            "thinking": internal_thought if thinking_mode else None
         })
     except ValueError as e:
         app_logger.warning(f"{str(e)}")
@@ -481,7 +485,8 @@ def switch_conversation():
                 'content': node.content,
                 'sender': node.sender,
                 'timestamp': node.timestamp.isoformat(),
-                'model_name': node.model_name
+                'model_name': node.model_name,
+                'internal_monologue': node.internal_monologue
             } for node in current_conversation.get_current_branch()
         ]
     })
@@ -510,7 +515,8 @@ def get_current_conversation():
                     'content': node.content,
                     'sender': node.sender,
                     'timestamp': node.timestamp.isoformat(),
-                    'model_name': node.model_name
+                    'model_name': node.model_name,
+                    'internal_monologue': node.internal_monologue
                 } for node in current_conversation.get_current_branch()
             ]
         })
@@ -532,7 +538,8 @@ def get_siblings():
                     'content': node.content,
                     'sender': node.sender,
                     'timestamp': node.timestamp.isoformat(),
-                    'model_name': node.model_name
+                    'model_name': node.model_name,
+                    'internal_monologue': node.internal_monologue
                 } for node in siblings
             ]
         })
@@ -615,7 +622,8 @@ def switch_branch():
                     'content': node.content,
                     'sender': node.sender,
                     'timestamp': node.timestamp.isoformat(),
-                    'model_name': node.model_name
+                    'model_name': node.model_name,
+                    'internal_monologue': node.internal_monologue
                 } for node in current_conversation.get_current_branch()
             ]
         })

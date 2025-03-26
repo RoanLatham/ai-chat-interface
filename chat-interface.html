@@ -317,6 +317,17 @@
         color: var(--text-color-dark);
       }
 
+      .ai-thought-message {
+        align-self: flex-start;
+        background-color: var(--secondary-color-light);
+        color: #2d3436;
+        font-style: italic;
+      }
+
+      .ai-thought-content {
+        margin-top: 1rem;
+      }
+
       .typing-message {
         background-color: var(--conversation-bg);
         display: flex;
@@ -986,9 +997,9 @@
       }
 
       .thinking-toggle.active {
-        /* background-color: var(--conversation-hover-color); */
-        color: var(--secondary-color);
-        /* background-color: var(--secondary-color); */
+        background-color: var(--secondary-color-light);
+        color: var(--text-color-dark);
+        /* color: var(--secondary-color-light); */
       }
 
       .disabled {
@@ -1404,7 +1415,9 @@
           const data = await response.json();
           if (data.success) {
             chatContainer.innerHTML = "";
-            data.branch.forEach((message) => addMessage(message));
+            data.branch.forEach((message) => {
+              addMessage(message);
+            });
             currentConversationId = data.conversation_id;
             highlightActiveConversation();
 
@@ -1437,7 +1450,11 @@
         }
       }
 
-      function createMessageElement(message) {
+      function createMessageElement(
+        message,
+        isThought = false,
+        isExpanded = false
+      ) {
         const messageContainer = document.createElement("div");
         messageContainer.classList.add(
           "message-container",
@@ -1445,6 +1462,47 @@
         );
         messageContainer.dataset.nodeId = message.id;
 
+        if (isThought) {
+          const messageElement = document.createElement("div");
+          messageElement.classList.add("message", "ai-thought-message");
+
+          // Create collapsible thought element
+          const thoughtContainer = document.createElement("div");
+          thoughtContainer.classList.add("ai-thought-container");
+          thoughtContainer.style.marginBottom = "0";
+
+          const thoughtHeader = document.createElement("div");
+          thoughtHeader.classList.add("ai-thought-header");
+          thoughtHeader.innerHTML =
+            '💡︎ <span>AI Thoughts</span> <span class="thought-toggle-icon">' +
+            (isExpanded ? "▲" : "▼") +
+            "</span>";
+
+          const thoughtContent = document.createElement("div");
+          thoughtContent.classList.add("ai-thought-content");
+          const content = message.content;
+          thoughtContent.innerHTML = formatMessage(content);
+
+          if (!isExpanded) {
+            thoughtContent.style.display = "none";
+          }
+
+          thoughtHeader.addEventListener("click", () => {
+            const isHidden = thoughtContent.style.display === "none";
+            thoughtContent.style.display = isHidden ? "block" : "none";
+            thoughtHeader.querySelector(".thought-toggle-icon").textContent =
+              isHidden ? "▲" : "▼";
+          });
+
+          thoughtContainer.appendChild(thoughtHeader);
+          thoughtContainer.appendChild(thoughtContent);
+          messageElement.appendChild(thoughtContainer);
+          messageContainer.appendChild(messageElement);
+
+          return messageContainer;
+        }
+
+        // Normal message handling (non-thought)
         const messageElement = document.createElement("div");
         messageElement.classList.add(
           "message",
@@ -1486,7 +1544,9 @@
         }
 
         messageElement.innerHTML = formatMessage(message.content);
+        messageContainer.appendChild(messageElement);
 
+        // Don't add info element for thought messages
         const infoElement = document.createElement("div");
         infoElement.classList.add(
           "message-info",
@@ -1516,7 +1576,6 @@
 
           infoElement.appendChild(iconContainer);
         }
-        messageContainer.appendChild(messageElement);
         messageContainer.appendChild(infoElement);
 
         return messageContainer;
@@ -1648,9 +1707,25 @@
       }
 
       function addMessage(message) {
+        // If this is an AI response with internal thought, add the thought first
+        if (message.sender === "AI" && message.internal_monologue) {
+          // Create a thought message
+          const thoughtMessage = {
+            id: "thought-" + message.id,
+            content: message.internal_monologue,
+            sender: "AI",
+            timestamp: message.timestamp,
+            model_name: message.model_name,
+          };
+          const thoughtElement = createMessageElement(thoughtMessage, true);
+          chatContainer.appendChild(thoughtElement);
+        }
+
+        // Add the main message
         const messageElement = createMessageElement(message);
         chatContainer.appendChild(messageElement);
         chatContainer.scrollTop = chatContainer.scrollHeight;
+
         updateSiblingArrows(message.id);
         // Quick way to apply the disabled state to all new elements correctly
         setWaitingState(isWaitingForResponse);
@@ -1864,6 +1939,9 @@
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
 
+          // Track if we've displayed a thought message that we might need to remove
+          let displayedThoughtId = null;
+
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -1878,22 +1956,59 @@
             } else if (data.status === "thinking") {
               removeLoadingMessage();
               removeTypingIndicator();
-              addMessage({
-                id: "thinking-" + Date.now().toString(),
-                content: data.thinking,
-                sender: "System",
-                timestamp: data.timestamp,
-              });
+
+              // Remove previous thought message if it exists
+              if (displayedThoughtId) {
+                const previousThought = document.querySelector(
+                  `[data-node-id="${displayedThoughtId}"]`
+                );
+                if (previousThought) {
+                  previousThought.remove();
+                }
+              }
+
+              // Create a temporary thought message ID
+              displayedThoughtId = "thinking-" + Date.now().toString();
+
+              // Add the thought as an AI thought message
+              const thoughtElement = createMessageElement(
+                {
+                  id: displayedThoughtId,
+                  content: data.thinking,
+                  sender: "AI",
+                  timestamp: data.timestamp,
+                  model_name: currentModel,
+                },
+                true, // Is thought message
+                true // Is expanded
+              );
+
+              chatContainer.appendChild(thoughtElement);
+              chatContainer.scrollTop = chatContainer.scrollHeight;
+
               showTypingIndicator();
             } else if (data.status === "complete") {
               removeTypingIndicator();
               setWaitingState(false);
+
+              // Remove the temporary thought display since it will be re-added by addMessage
+              if (displayedThoughtId) {
+                const previousThought = document.querySelector(
+                  `[data-node-id="${displayedThoughtId}"]`
+                );
+                if (previousThought) {
+                  previousThought.remove();
+                }
+              }
+
+              // Add the complete message with internal_monologue included
               addMessage({
                 id: data.node_id,
                 content: data.response,
                 sender: "AI",
                 timestamp: data.timestamp,
                 model_name: currentModel,
+                internal_monologue: thinkingModeEnabled ? data.thinking : null,
               });
             } else if (data.status === "error") {
               throw new Error(data.message);
@@ -2031,6 +2146,9 @@
             const aireader = aiResponse.body.getReader();
             const aidecoder = new TextDecoder();
 
+            // Track if we've displayed a thought message that we might need to remove
+            let displayedThoughtId = null;
+
             while (true) {
               const { done, value } = await aireader.read();
               if (done) break;
@@ -2049,23 +2167,62 @@
               } else if (aiData.status === "thinking") {
                 removeLoadingMessage();
                 removeTypingIndicator();
-                addMessage({
-                  id: "thinking-" + Date.now().toString(),
-                  content: aiData.thinking,
-                  sender: "System",
-                  timestamp: aiData.timestamp,
-                });
+
+                // Remove previous thought message if it exists
+                if (displayedThoughtId) {
+                  const previousThought = document.querySelector(
+                    `[data-node-id="${displayedThoughtId}"]`
+                  );
+                  if (previousThought) {
+                    previousThought.remove();
+                  }
+                }
+
+                // Create a temporary thought message ID
+                displayedThoughtId = "thinking-" + Date.now().toString();
+
+                // Add the thought as an AI thought message instead of a system message
+                const thoughtElement = createMessageElement(
+                  {
+                    id: displayedThoughtId,
+                    content: aiData.thinking,
+                    sender: "AI",
+                    timestamp: aiData.timestamp,
+                    model_name: currentModel,
+                  },
+                  true, // Is thought message
+                  true // Is expanded
+                );
+
+                chatContainer.appendChild(thoughtElement);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
                 showTypingIndicator();
               } else if (aiData.status === "complete") {
                 clearFirstMessageTimer();
                 removeTypingIndicator();
                 removeLoadingMessage();
+
+                // Remove the temporary thought display since it will be re-added by addMessage
+                if (displayedThoughtId) {
+                  const previousThought = document.querySelector(
+                    `[data-node-id="${displayedThoughtId}"]`
+                  );
+                  if (previousThought) {
+                    previousThought.remove();
+                  }
+                }
+
+                // Add the complete AI message with internal_monologue included
                 addMessage({
                   id: aiData.node_id,
                   content: aiData.response,
                   sender: "AI",
                   timestamp: aiData.timestamp,
                   model_name: currentModel,
+                  internal_monologue: thinkingModeEnabled
+                    ? aiData.thinking
+                    : null,
                 });
               } else if (aiData.status === "error") {
                 throw new Error(aiData.message);
