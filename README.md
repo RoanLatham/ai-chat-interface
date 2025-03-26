@@ -6,6 +6,8 @@
 
 <p align="center">
   A privacy-focused conversational AI app powered by local LLMs, featuring branching conversations
+</p>
+<p align="center">
   Built with 1 HTML file and 1 Python script
 </p>
 
