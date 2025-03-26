@@ -29,6 +29,7 @@
       :root {
         --bg-color: #1a1a1a;
         --text-color: #ffffff;
+        --text-color-dark: #2d3436;
         --primary-color: #6c5ce7;
         --primary-hover-color: #5f51e8;
         --secondary-color: #81ecec;
@@ -313,7 +314,7 @@
       .ai-message {
         align-self: flex-start;
         background-color: var(--secondary-color);
-        color: #2d3436;
+        color: var(--text-color-dark);
       }
 
       .typing-message {
@@ -328,11 +329,21 @@
         position: absolute;
       }
 
-      .system-message {
+      .error-message {
         align-self: center;
         background-color: var(--accent-color);
         color: var(--bg-color);
         font-style: italic;
+      }
+
+      .system-message {
+        align-self: center;
+        background-color: var(--conversation-bg);
+        color: var(--text-color);
+        padding: 10px 15px;
+        border-radius: 20px;
+        margin: 10px 0;
+        animation: fadeInUp 0.3s ease-out;
       }
 
       /* Marked markdown styles */
@@ -931,15 +942,61 @@
         pointer-events: none;
       }
 
-      .loading-message {
-        align-self: center;
-        background-color: var(--conversation-bg);
-        color: var(--text-color);
-        padding: 10px 15px;
-        border-radius: 20px;
-        margin: 10px 0;
-        animation: fadeInUp 0.3s ease-out;
+      .conversation-warning-icon {
+        color: #fdb779;
+        margin-left: 8px;
+        font-size: 1.25rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: help;
       }
+
+      .system-message.version-warning {
+        background-color: #fdb779;
+        color: var(--text-color-dark);
+        font-weight: 500;
+      }
+
+      .input-buttons-container {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-end;
+      }
+
+      .thinking-toggle {
+        background-color: var(--conversation-bg);
+        border-radius: 25px;
+        width: 50px;
+        height: 50px;
+        border: none;
+        color: #ffffff;
+        font-size: 1.25rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 10px;
+        transition: color 0.3s ease;
+      }
+
+      .thinking-toggle:hover {
+        color: var(--text-color);
+        background-color: var(--conversation-hover-color);
+      }
+
+      .thinking-toggle.active {
+        /* background-color: var(--conversation-hover-color); */
+        color: var(--secondary-color);
+        /* background-color: var(--secondary-color); */
+      }
+
+      .disabled {
+        opacity: 0.6;
+        pointer-events: none;
+      }
+
+      /* Removed .loading-message as it's replaced by system-message */
 
       .folder-input,
       .url-input {
@@ -1104,54 +1161,6 @@
         font-weight: bold;
         position: absolute;
         left: -15px;
-      }
-
-      .conversation-warning-icon {
-        color: #ff9800;
-        margin-left: 8px;
-        font-size: 1.25rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        cursor: help;
-      }
-
-      .system-message.version-warning {
-        background-color: #fdb779;
-        font-weight: 500;
-      }
-
-      .input-buttons-container {
-        display: flex;
-        flex-direction: row;
-        align-items: flex-end;
-      }
-
-      .thinking-toggle {
-        background-color: var(--conversation-bg);
-        border-radius: 25px;
-        width: 50px;
-        height: 50px;
-        border: none;
-        color: #ffffff;
-        font-size: 1.25rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0 10px;
-        transition: color 0.3s ease;
-      }
-
-      .thinking-toggle:hover {
-        color: var(--text-color);
-        background-color: var(--conversation-hover-color);
-      }
-
-      .thinking-toggle.active {
-        /* background-color: var(--conversation-hover-color); */
-        color: var(--secondary-color);
-        /* background-color: var(--secondary-color); */
       }
     </style>
   </head>
@@ -1442,6 +1451,32 @@
           `${message.sender.toLowerCase()}-message`
         );
 
+        // Special handling for System messages - classify as error or information
+        if (message.sender === "System") {
+          const lowerContent = message.content.toLowerCase();
+          const errorPatterns = [
+            "error",
+            "failed",
+            "fail",
+            "not found",
+            "cannot",
+            "unable to",
+            "missing",
+            "invalid",
+          ];
+
+          // Check if message content contains any error patterns
+          const isErrorMessage = errorPatterns.some((pattern) =>
+            lowerContent.includes(pattern)
+          );
+
+          if (isErrorMessage) {
+            // Use error-message class for error messages
+            messageElement.classList.remove("system-message");
+            messageElement.classList.add("error-message");
+          }
+        }
+
         // Add version-warning class for system messages about version warnings
         if (
           message.sender === "System" &&
@@ -1625,8 +1660,14 @@
         const messageContainer = document.querySelector(
           `[data-node-id="${nodeId}"]`
         );
-        if (messageContainer.classList.contains("system-message")) {
-          return; // Exit the function if it's a system message
+        // Check if the message element inside the container has system-message or error-message class
+        const messageElement = messageContainer.querySelector(".message");
+        if (
+          messageElement &&
+          (messageElement.classList.contains("system-message") ||
+            messageElement.classList.contains("error-message"))
+        ) {
+          return; // Exit the function if it's a system or error message
         }
 
         try {
@@ -2068,14 +2109,16 @@
       function showLoadingMessage(message) {
         removeLoadingMessage();
         const loadingElement = document.createElement("div");
-        loadingElement.className = "loading-message";
+        loadingElement.className = "system-message loading-indicator"; // Add loading-indicator class for tracking
         loadingElement.textContent = message;
         chatContainer.appendChild(loadingElement);
         chatContainer.scrollTop = chatContainer.scrollHeight;
       }
 
       function removeLoadingMessage() {
-        const loadingElement = chatContainer.querySelector(".loading-message");
+        const loadingElement = chatContainer.querySelector(
+          ".system-message.loading-indicator"
+        );
         if (loadingElement) {
           loadingElement.remove();
         }
