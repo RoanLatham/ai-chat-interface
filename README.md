@@ -64,7 +64,7 @@
 
 ### Windows Only: Packaged Versions
 
-<details>
+<details open>
 <summary><h4>💼 Portable Version</h4></summary>
 
 1. Download the portable ZIP from the [Releases](https://github.com/RoanLatham/ai-chat-interface/releases) page
@@ -73,7 +73,7 @@
 
 </details>
 
-<details>
+<details open>
 <summary><h4>💿 Windows Installer</h4></summary>
 
 1. Download the latest installer from the [Releases](https://github.com/RoanLatham/ai-chat-interface/releases) page
@@ -82,7 +82,7 @@
 
 </details>
 
-<details>
+<details open>
 <summary><h3>📦 All Platforms: From Source</h3></summary>
 
 This method works on Windows, macOS, and Linux.
@@ -112,7 +112,7 @@ python local-ai-chat-app.py
 
 </details>
 
-<details>
+<details open>
 <summary><h4>🤖 Setting Up AI Models</h4></summary>
 
 After installation:
@@ -121,7 +121,7 @@ After installation:
 2. Refresh or open the web interface
 3. Select your model from the dropdown in the top center of the page
 
-<details>
+<details open>
 <summary>🔍 Where to find compatible models</summary>
 
 Compatible GGUF models can be downloaded from:
@@ -151,7 +151,7 @@ Choose quantization level based on your hardware capabilities:
 <details open>
 <summary><h2>🚀 Usage</h2></summary>
 
-<details>
+<details open>
 <summary><h4>🚀 Starting the Application</h4></summary>
 
 1. Launch the application using the desktop shortcut or executable
@@ -160,7 +160,7 @@ Choose quantization level based on your hardware capabilities:
 
 </details>
 
-<details>
+<details open>
 <summary><h4>✨ Features</h4></summary>
 
 <details>
@@ -199,7 +199,7 @@ Choose quantization level based on your hardware capabilities:
 </details>
 
 <details>
-<summary><h4>📂 Managing Conversations</h4></summary>
+<summary>📂 Managing Conversations</summary>
 
 - **✏️ Rename**: Click the menu icon next to a conversation and select "Rename"
 - **🗑️ Delete**: Click the menu icon next to a conversation and select "Delete"
@@ -209,7 +209,7 @@ Choose quantization level based on your hardware capabilities:
 
 </details>
 
-<details>
+<details open>
 <summary><h4>⚠️ Troubleshooting</h4></summary>
 
 - If models aren't appearing, ensure they're placed in the `ai_models` directory with a `.gguf` extension
@@ -237,7 +237,7 @@ Choose quantization level based on your hardware capabilities:
 <details open>
 <summary><h2>💻 Development</h2></summary>
 
-<details>
+<details open>
 <summary><h4>📁 Project Structure</h4></summary>
 
 ```
@@ -258,7 +258,7 @@ ai-chat-interface/
 
 </details>
 
-<details>
+<details open>
 <summary><h4>🔨 Building the Application</h4></summary>
 
 ```bash
@@ -277,7 +277,7 @@ python build_master.bat --skip-deps
 
 </details>
 
-<details>
+<details open>
 <summary><h4>🔧 Conversation Editor Tool</h4></summary>
 
 The project includes a developer tool for managing conversation files:
