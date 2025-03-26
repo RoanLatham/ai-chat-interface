@@ -754,13 +754,44 @@ def serve_icon(filename):
 
 def open_browser():
     """Open browser to the application URL"""
-    def _open_browser():
-        time.sleep(1.5)  # Give the server a bit of time to start
-        webbrowser.open('http://localhost:5000')
+    server_url = 'http://localhost:5000'
+    app_logger.info(f"Opening browser to {server_url}")
     
-    browser_thread = threading.Thread(target=_open_browser)
-    browser_thread.daemon = True
-    browser_thread.start()
+    # Try to open the browser
+    try:
+        webbrowser.open(server_url)
+        app_logger.info("Browser opened successfully")
+    except Exception as e:
+        app_logger.error(f"Failed to open browser: {str(e)}")
+
+# Variable to track if we've already opened the browser
+browser_opened = False
+
+@app.before_request
+def open_browser_on_first_request():
+    """Open browser on the first request to any route - this ensures server is ready"""
+    global browser_opened
+    
+    # Only open browser if:
+    # 1. We haven't opened it yet
+    # 2. We're in packaged mode
+    # 3. NO_BROWSER_OPEN environment variable is not set
+    if not browser_opened and is_packaged() and not os.environ.get('NO_BROWSER_OPEN'):
+        # Use a timer to avoid blocking the request
+        threading.Timer(0.1, open_browser).start()
+        browser_opened = True
+        app_logger.info("Browser opening scheduled after first request")
+
+# Function to bootstrap the first request
+def trigger_first_request():
+    """Make a request to the server to trigger @app.before_request handlers"""
+    time.sleep(1.0)  # Give the server a moment to start
+    try:
+        import urllib.request
+        urllib.request.urlopen('http://localhost:5000/', timeout=1)
+        app_logger.debug("Bootstrap request completed")
+    except Exception as e:
+        app_logger.debug(f"Bootstrap request failed: {str(e)}")
 
 if __name__ == '__main__':
     app_logger.info("Application started")
@@ -775,11 +806,12 @@ if __name__ == '__main__':
     # Ensure directories exist
     os.makedirs(MODELS_DIR, exist_ok=True)
     os.makedirs(CONVERSATIONS_DIR, exist_ok=True)
-    app.run(debug=True)
     
-    # Open browser when launching the application
-    if not os.environ.get('NO_BROWSER_OPEN'):
-        open_browser()
+    # Start a thread to trigger the first request if we're in packaged mode
+    if is_packaged() and not os.environ.get('NO_BROWSER_OPEN'):
+        bootstrap_thread = threading.Thread(target=trigger_first_request)
+        bootstrap_thread.daemon = True
+        bootstrap_thread.start()
+        app_logger.info("Bootstrap thread started")
     
-    # Use 127.0.0.1 for localhost
-    app.run(host='127.0.0.1', port=5000, debug=not is_packaged())
+    app.run(host='127.0.0.1', port=5000, debug=True, threaded=True)
