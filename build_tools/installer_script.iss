@@ -27,7 +27,7 @@ DisableProgramGroupPage=no
 ; Set a custom icon for the installer if it exists
 SetupIconFile={#RootDir}\icon\AII-icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
-PrivilegesRequired=lowest
+PrivilegesRequired=admin
 WizardStyle=modern
 
 [Languages]
