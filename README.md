@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./icon/AII-icon.ico" alt="Local AI Chat Logo" width="200"/>
+  <img src="./icon/AII-icon.ico" alt="Local AI Chat Logo" width="72"/>
 </p>
 
 <h1 align="center">Local AI Chat</h1>
