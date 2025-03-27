@@ -107,25 +107,24 @@ current_conversation = None
 NAMING_PROMPT = """Based on the user's first message, generate a short, concise title for this conversation. The title should be no more than 5 words long and should capture the essence of the topic or query. if the message is vague or doesn't describe a definitive topic, try to include words form the users message in the title, if that still doesn't work, use a more general title. Respond with only the title, nothing else."""
 
 # Load system prompt from file
-def load_system_prompt():
+def load_session_prompt():
     try:
         with open(SYSTEM_PROMPT_PATH, 'r', encoding='utf-8') as file:
             return file.read().strip()
     except FileNotFoundError:
-        app_logger.warning("System prompt file not found, using default system prompt")
-        # TODO add real back up session prompt during prompt naming refactor
-        return DEFAULT_SYSTEM_PROMPT
+        app_logger.warning("System prompt file not found, using default session prompt")
+        return DEFAULT_SESSION_PROMPT
 
-SUPER_SYSTEM_PROMPT = load_system_prompt()
+SYSTEM_PROMPT = load_session_prompt()
 
-DEFAULT_SYSTEM_PROMPT = """You are a helpful AI assistant. You are knowledgeable, friendly, and always strive to provide accurate and useful information."""
+DEFAULT_SESSION_PROMPT = """You are a helpful AI assistant. You are knowledgeable, friendly, and always strive to provide accurate and useful information."""
 
-current_system_prompt = DEFAULT_SYSTEM_PROMPT
+current_session_prompt = DEFAULT_SESSION_PROMPT
 
-SYSTEM_PROMPT_PREPEND ="""The following are conversation-specific instructions provided by the user for this interaction: 
+SESSION_PROMPT_PREPEND ="""The following are conversation-specific instructions provided by the user for this interaction: 
 <<SYS>>"""
 
-SYSTEM_PROMPT_APPEND = """<</SYS>>
+SESSION_PROMPT_APPEND = """<</SYS>>
 End of conversation-specific instructions.
 
 The conversation history begins below. Focus on the latest human response and continue the conversation accordingly:"""
@@ -214,7 +213,7 @@ def generate_ai_response(conversation: Conversation, model_name: str, thinking_m
             })
         else:
             # Use placeholder internal thought when thinking mode is disabled
-            internal_thought = "<AI Internal Thought></AI Internal Thought>\nThinking mode is disabled. Proceeding directly to response."
+            internal_thought = "Thinking mode is disabled. Proceeding directly to response."
             app_logger.info("Thinking mode disabled, skipping internal thought generation")
         
         # Generate AI response
@@ -277,7 +276,7 @@ def prepare_gatt_history(conversation: Conversation, token_limits: TokenLimits) 
     remaining_history = []
     current_tokens = guaranteed_tokens
     target_tokens_remaining = token_limits.target_tokens - current_tokens
-    omission_notice = "<system>Some messages have been omitted to fit the context window.</system>"
+    omission_notice = "<s>Some messages have been omitted to fit the context window.</s>"
     omission_tokens = count_tokens(omission_notice)
 
     for node in reversed(remaining_nodes):
@@ -309,10 +308,10 @@ def prepare_gatt_history(conversation: Conversation, token_limits: TokenLimits) 
 
 # Prepare full prompt including system prompts and conversation history
 def prepare_full_prompt(history: str, token_limits: TokenLimits, internal_thought: str = "") -> str:
-    full_prompt = f"{SUPER_SYSTEM_PROMPT}\n\n"
+    full_prompt = f"{SYSTEM_PROMPT}\n\n"
     
-    if current_system_prompt and current_system_prompt != DEFAULT_SYSTEM_PROMPT:
-        full_prompt += f"{SYSTEM_PROMPT_PREPEND}\n{current_system_prompt}\n{SYSTEM_PROMPT_APPEND}\n\n"
+    if current_session_prompt:
+        full_prompt += f"{SESSION_PROMPT_PREPEND}\n{current_session_prompt}\n{SESSION_PROMPT_APPEND}\n\n"
     
     full_prompt += f"{history}\n\n"
     
@@ -324,7 +323,7 @@ def prepare_full_prompt(history: str, token_limits: TokenLimits, internal_though
     if final_tokens > token_limits.max_tokens:
         raise ValueError(f"Failed to reduce context: Final context ({final_tokens} tokens) exceeds maximum allowed ({token_limits.max_tokens} tokens)")
     
-    logger.info(f"Prepared full prompt: {full_prompt}")
+    app_logger.info(f"Prepared full prompt: \n{full_prompt}")
 
     return full_prompt
 
@@ -656,7 +655,7 @@ def switch_branch():
 @app.route('/conversation/add_user_message', methods=['POST'])
 def add_user_message():
     request_start = time.time()
-    global current_system_prompt, current_model, current_conversation, current_model_name
+    global current_session_prompt, current_model, current_conversation, current_model_name
     data = request.json
     user_input = data['message']
     model_name = data['model']
@@ -666,8 +665,8 @@ def add_user_message():
     if not is_valid:
         return error_response
     
-    if 'system_prompt' in data:
-        current_system_prompt = data['system_prompt']
+    if 'session_prompt' in data:
+        current_session_prompt = data['session_prompt']
     
     def generate(user_input, model_name):
         global current_model, current_conversation, current_model_name
@@ -784,29 +783,30 @@ def get_original_content():
     
     return jsonify({'success': False, 'error': 'Node not found'}), 404
 
-## System prompt routes
-# Get the current system prompt
-@app.route('/system_prompt', methods=['GET'])
-def get_system_prompt():
-    return jsonify({'system_prompt': current_system_prompt})
+## Session prompt routes
+# Get the current session prompt
+@app.route('/session_prompt', methods=['GET'])
+def get_current_session_prompt():
+    return jsonify({'session_prompt': current_session_prompt})
 
-# Get the default system prompt
-@app.route('/system_prompt/default', methods=['GET'])
-def get_default_system_prompt():
-    return jsonify({'default_system_prompt': DEFAULT_SYSTEM_PROMPT})
+# Get the default session prompt
+@app.route('/session_prompt/default', methods=['GET'])
+def get_default_current_session_prompt():
+    return jsonify({'default_session_prompt': DEFAULT_SESSION_PROMPT})
 
-# Set a new system prompt
-@app.route('/system_prompt/set', methods=['POST'])
-def set_system_prompt():
-    global current_system_prompt
+# Set a new session prompt
+@app.route('/session_prompt/set', methods=['POST'])
+def set_current_session_prompt():
+    global current_session_prompt
     data = request.json
-    new_system_prompt = data.get('system_prompt')
+    new_current_session_prompt = data.get('session_prompt')
     
-    if new_system_prompt is not None:
-        current_system_prompt = new_system_prompt
-        return jsonify({'success': True, 'system_prompt': current_system_prompt})
+    if new_current_session_prompt is not None:
+        current_session_prompt = new_current_session_prompt
+        app_logger.info(f"New session prompt set: \n {current_session_prompt}")
+        return jsonify({'success': True, 'session_prompt': current_session_prompt})
     else:
-        return jsonify({'success': False, 'error': 'No system prompt provided'}), 400
+        return jsonify({'success': False, 'error': 'No session prompt provided'}), 400
 
 # Serve icon files
 @app.route('/icon/<path:filename>')

@@ -50,27 +50,27 @@ The application follows a Flask server structure with the following key componen
 
 ### Global Variables and Constants
 
-| Variable/Constant       | Type           | Description                         |
-| ----------------------- | -------------- | ----------------------------------- |
-| `MODELS_DIR`            | `str`          | Directory containing AI model files |
-| `CONVERSATIONS_DIR`     | `str`          | Directory for saved conversations   |
-| `SYSTEM_PROMPT_PATH`    | `str`          | Path to the system prompt file      |
-| `current_model`         | `Llama`        | Currently loaded AI model instance  |
-| `current_model_name`    | `str`          | Name of the currently loaded model  |
-| `current_conversation`  | `Conversation` | Currently active conversation       |
-| `current_system_prompt` | `str`          | Currently active system prompt      |
+| Variable/Constant        | Type           | Description                         |
+| ------------------------ | -------------- | ----------------------------------- |
+| `MODELS_DIR`             | `str`          | Directory containing AI model files |
+| `CONVERSATIONS_DIR`      | `str`          | Directory for saved conversations   |
+| `SYSTEM_PROMPT_PATH`     | `str`          | Path to the system prompt file      |
+| `current_model`          | `Llama`        | Currently loaded AI model instance  |
+| `current_model_name`     | `str`          | Name of the currently loaded model  |
+| `current_conversation`   | `Conversation` | Currently active conversation       |
+| `current_session_prompt` | `str`          | Currently active system prompt      |
 
 ### Utility Functions
 
-| Function               | Description                                 |
-| ---------------------- | ------------------------------------------- |
-| `is_packaged()`        | Checks if running as a packaged executable  |
-| `get_base_dir()`       | Gets the base directory for the application |
-| `get_user_data_dir()`  | Gets the user data directory                |
-| `setup_logging()`      | Configures logging for the application      |
-| `load_system_prompt()` | Loads the system prompt from file           |
-| `tokenize(text)`       | Tokenizes text using the current model      |
-| `count_tokens(text)`   | Counts tokens in a text string              |
+| Function                | Description                                 |
+| ----------------------- | ------------------------------------------- |
+| `is_packaged()`         | Checks if running as a packaged executable  |
+| `get_base_dir()`        | Gets the base directory for the application |
+| `get_user_data_dir()`   | Gets the user data directory                |
+| `setup_logging()`       | Configures logging for the application      |
+| `load_session_prompt()` | Loads the system prompt from file           |
+| `tokenize(text)`        | Tokenizes text using the current model      |
+| `count_tokens(text)`    | Counts tokens in a text string              |
 
 ### Model Management
 
@@ -137,11 +137,11 @@ The application follows a Flask server structure with the following key componen
 
 #### System Prompt Routes
 
-| Route                    | Method | Description                    |
-| ------------------------ | ------ | ------------------------------ |
-| `/system_prompt`         | GET    | Gets the current system prompt |
-| `/system_prompt/default` | GET    | Gets the default system prompt |
-| `/system_prompt/set`     | POST   | Sets a new system prompt       |
+| Route                     | Method | Description                    |
+| ------------------------- | ------ | ------------------------------ |
+| `/session_prompt`         | GET    | Gets the current system prompt |
+| `/session_prompt/default` | GET    | Gets the default system prompt |
+| `/session_prompt/set`     | POST   | Sets a new system prompt       |
 
 ## Usage Guide
 

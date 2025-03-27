@@ -121,7 +121,7 @@
       }
 
       .models-folder-path,
-      #system-prompt-button span,
+      #session-prompt-button span,
       #add-model-button span {
         white-space: nowrap;
         overflow: hidden;
@@ -1183,22 +1183,24 @@
           <span>Add Model</span>
         </button>
         <select id="model-select"></select>
-        <button id="system-prompt-button" class="button">
-          <span>Edit System Prompt</span>
+        <button id="session-prompt-button" class="button">
+          <span>Edit Session Prompt</span>
         </button>
         <button id="help-button" class="button">Help</button>
       </div>
 
-      <div id="system-prompt-modal" class="modal">
+      <div id="session-prompt-modal" class="modal">
         <div class="modal-content">
-          <h2>Edit System Prompt</h2>
-          <textarea id="system-prompt-input" rows="10" cols="50"></textarea>
+          <h2>Edit Session Prompt</h2>
+          <textarea id="session-prompt-input" rows="10" cols="50"></textarea>
           <div class="modal-buttons">
             <button id="load-default-prompt" class="button">
               Load Default
             </button>
-            <button id="save-system-prompt" class="button">Save</button>
-            <button id="close-system-prompt-modal" class="button">Close</button>
+            <button id="save-session-prompt" class="button">Save</button>
+            <button id="close-session-prompt-modal" class="button">
+              Close
+            </button>
           </div>
         </div>
       </div>
@@ -2150,7 +2152,7 @@
               body: JSON.stringify({
                 message: message,
                 model: currentModel,
-                system_prompt: currentSystemPrompt,
+                session_prompt: currentSessionPrompt,
                 thinking_mode: thinkingModeEnabled,
               }),
             });
@@ -2824,98 +2826,101 @@
         }
       }
 
-      //system prompt modal
-      const systemPromptButton = document.getElementById(
-        "system-prompt-button"
+      //Session Prompt modal
+      const sessionPromptButton = document.getElementById(
+        "session-prompt-button"
       );
-      const systemPromptModal = document.getElementById("system-prompt-modal");
-      const systemPromptInput = document.getElementById("system-prompt-input");
-      const saveSystemPromptButton =
-        document.getElementById("save-system-prompt");
-      const closeSystemPromptModal = document.getElementById(
-        "close-system-prompt-modal"
+      const sessionPromptModal = document.getElementById(
+        "session-prompt-modal"
+      );
+      const sessionPromptInput = document.getElementById(
+        "session-prompt-input"
+      );
+      const saveSessionPromptButton = document.getElementById(
+        "save-session-prompt"
+      );
+      const closeSessionPromptModal = document.getElementById(
+        "close-session-prompt-modal"
       );
 
-      let currentSystemPrompt = "";
+      let currentSessionPrompt = "";
 
-      async function loadSystemPrompt() {
+      async function loadSessionPrompt() {
         try {
-          const response = await fetch("/system_prompt");
+          const response = await fetch("/session_prompt");
           const data = await response.json();
-          currentSystemPrompt = data.system_prompt;
-          systemPromptInput.value = currentSystemPrompt;
+          currentSessionPrompt = data.session_prompt;
+          sessionPromptInput.value = currentSessionPrompt;
         } catch (error) {
-          console.error("Error loading system prompt:", error);
+          console.error("Error loading Session Prompt:", error);
           addMessage({
             id: Date.now().toString(),
-            content: "Error loading system prompt:" + error.message,
+            content: "Error loading Session Prompt:" + error.message,
             sender: "System",
             timestamp: null,
           });
         }
       }
 
-      systemPromptButton.addEventListener("click", () => {
-        showModal(systemPromptModal);
+      sessionPromptButton.addEventListener("click", () => {
+        showModal(sessionPromptModal);
       });
 
-      closeSystemPromptModal.addEventListener("click", () => {
-        hideModal(systemPromptModal);
+      closeSessionPromptModal.addEventListener("click", () => {
+        hideModal(sessionPromptModal);
       });
 
-      saveSystemPromptButton.addEventListener("click", async () => {
-        const newSystemPrompt = systemPromptInput.value.trim();
+      saveSessionPromptButton.addEventListener("click", async () => {
+        currentSessionPrompt = sessionPromptInput.value.trim();
 
-        fetch("/system_prompt/set", {
+        fetch("/session_prompt/set", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ system_prompt: newSystemPrompt }),
+          body: JSON.stringify({ session_prompt: currentSessionPrompt }),
         })
           .then((response) => response.json())
           .then((data) => {
             if (data.success) {
-              console.log("System prompt updated successfully");
-              // Optionally, you can update the UI to reflect the change
-              // systemPromptInput.value = data.system_prompt;
-              systemPromptModal.style.display = "none";
+              console.log("Session Prompt updated successfully");
+              sessionPromptModal.style.display = "none";
               addMessage({
                 id: Date.now().toString(),
-                content: "System prompt updated",
+                content: "Session Prompt updated",
                 sender: "System",
                 timestamp: null,
               });
             } else {
-              console.error("Failed to update system prompt:", data.error);
+              console.error("Failed to update Session Prompt:", data.error);
             }
           })
           .catch((error) => {
-            console.error("Error updating system prompt:", error);
+            console.error("Error updating Session Prompt:", error);
             addMessage({
               id: Date.now().toString(),
-              content: "Error updating system prompt:" + error.message,
+              content: "Error updating Session Prompt:" + error.message,
               sender: "System",
               timestamp: null,
             });
           });
       });
 
-      // load default system prompt
+      // load default Session Prompt
       const loadDefaultPromptButton = document.getElementById(
         "load-default-prompt"
       );
 
       loadDefaultPromptButton.addEventListener("click", async () => {
         try {
-          const response = await fetch("/system_prompt/default");
+          const response = await fetch("/session_prompt/default");
           const data = await response.json();
-          systemPromptInput.value = data.default_system_prompt;
+          sessionPromptInput.value = data.default_session_prompt;
         } catch (error) {
-          console.error("Error loading default system prompt:", error);
+          console.error("Error loading default Session Prompt:", error);
           addMessage({
             id: Date.now().toString(),
-            content: "Error loading default system prompt:" + error.message,
+            content: "Error loading default Session Prompt:" + error.message,
             sender: "System",
             timestamp: null,
           });
@@ -2924,7 +2929,7 @@
 
       // Initialize the chat interface
       loadModels();
-      loadSystemPrompt();
+      loadSessionPrompt();
       loadConversations();
       loadModelsFolderPath();
       loadCurrentConversation();
