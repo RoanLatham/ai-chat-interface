@@ -141,7 +141,7 @@ class ConversationEditor:
         print(f"Regenerated conversation ID: {old_id} → {self.conversation.id}")
         self.modified = True
     
-    def print_node(self, node: Node, level: int = 0) -> None:
+    def print_node(self, node: Node, level: int = 0, i_in_branch: int =0) -> None:
         """Print a node and its details"""
         current_marker = "→ " if node == self.current_node else "  "
         indent = "  " * level
@@ -152,6 +152,7 @@ class ConversationEditor:
             "Root": "\033[90m"    # Gray
         }.get(node.sender, "\033[0m")
         
+        print(indent + (f"{i_in_branch} " if i_in_branch != 0 else "  ") + ( "-" *40) )
         print(f"{indent}{current_marker}{sender_color}{node.sender}\033[0m: {node.id[:8]}... [{node.timestamp.strftime('%Y-%m-%d %H:%M:%S')}]")
         if node.content:
             max_content = 50
@@ -159,6 +160,7 @@ class ConversationEditor:
             print(f"{indent}  Content: {content_preview}")
         if node.model_name:
             print(f"{indent}  Model: {node.model_name}")
+        print(indent + "  " +( "-" *40) )
     
     def print_tree(self, node: Optional[Node] = None, level: int = 0) -> None:
         """Print the conversation tree"""
@@ -174,6 +176,7 @@ class ConversationEditor:
             print("\nTree structure:")
         
         self.print_node(node, level)
+        # print("\n")
         
         for child in node.children:
             self.print_tree(child, level + 1)
@@ -259,8 +262,8 @@ class ConversationEditor:
         print("\nCurrent branch (root to current):")
         for i, node in enumerate(branch):
             if node != self.conversation.tree.root:  # Skip root node
-                print(f"{i}. ", end="")
-                self.print_node(node)
+                # print(f"{i}. ", end="")
+                self.print_node(node, i_in_branch=i)
     
     def set_version(self, new_version: str) -> None:
         """Set the conversation version"""
