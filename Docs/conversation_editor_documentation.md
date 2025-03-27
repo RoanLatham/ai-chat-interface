@@ -144,7 +144,6 @@ The Conversation Editor has minimal configuration but offers some flexibility:
 | Argument        | Description                                                         |
 | --------------- | ------------------------------------------------------------------- |
 | `file`          | Path to the conversation pickle file to edit                        |
-| `--batch`       | (Not yet implemented) Path to a file with batch commands            |
 | `--set-version` | Set conversation version and save without entering interactive mode |
 
 ### Import Behavior
@@ -199,8 +198,7 @@ Using built-in conversation classes (limited functionality)
 ### Recovering from Errors
 
 1. If the editor crashes, any unsaved changes will be lost
-2. If a conversation file is corrupted, try using the `--set-version` option to update its version
-3. If navigation becomes confusing, use `top` to return to the root node and start over
+2. If navigation becomes confusing, use `top` to return to the root node and start over
 
 ## Additional Notes
 
@@ -221,16 +219,6 @@ Conversation files use Python's pickle format with the following structure:
   - `metadata`: Dictionary of custom metadata
   - `latest_message_timestamp`: Datetime of most recent message
   - `version`: String in x.y.z format
-
-### Future Enhancements
-
-Planned features for future versions include:
-
-- Batch processing through script files
-- Exporting conversations to JSON for external editing
-- Merging functionality for combining conversation branches
-- Statistical analysis of conversation data
-- Direct integration with the main application
 
 ### Related Files
 
