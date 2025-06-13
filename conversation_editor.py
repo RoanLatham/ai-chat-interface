@@ -26,7 +26,7 @@ try:
 except ImportError:
     IMPORTED_FROM_APP = False
     # Define minimal classes for standalone use
-    CONVERSATION_VERSION = "1.0.0"  # Default version if not imported
+    CONVERSATION_VERSION = "2.0.0"  # Default version if not imported
     
     class Node:
         def __init__(self, content: str, sender: str, timestamp: datetime, 

@@ -153,7 +153,7 @@ STOP_PHRASES = ["Human:",
                 "<</AI Internal Thought>>",
                 "Your response is awaited."]
 
-INTERNAL_THOUGHT_PROMPT = """
+internal_monologue_PROMPT = """
 Analyze the conversation history and the user's latest message. Formulate a strategy for responding, considering:
 1. Key points to address
 2. Tone and style appropriate for the context
@@ -161,7 +161,7 @@ Analyze the conversation history and the user's latest message. Formulate a stra
 4. Any relevant background knowledge to incorporate
 5. the best way to format the response using codeblocks headings, list, numbered lists etc, if necessary
 
-Format your thoughts clearly and concisely. This is for internal planning only and will not be shown to the user.
+Format your planning thoughts clearly and concisely. This is for internal planning only and will not be shown to the user.
 
 you will be provided with an opening <AI Internal Thought> tag, you must end your response with a closing response tag: </AI Internal Thought>
 """
@@ -180,7 +180,7 @@ class TokenLimits:
             raise ValueError("Target tokens cannot exceed max tokens")
 
 # Generate AI response for a given conversation, user message must already be added to conversation
-def generate_ai_response(conversation: Conversation, model_name: str, thinking_mode: bool = False, token_limits: TokenLimits = TokenLimits(4096)): #-> Generator[str, None, None]:
+def generate_ai_response(conversation: Conversation, model_name: str, planning_mode: bool = False, token_limits: TokenLimits = TokenLimits(4096)): #-> Generator[str, None, None]:
     start_time = time.time()
     global current_model, current_model_name
 
@@ -194,39 +194,39 @@ def generate_ai_response(conversation: Conversation, model_name: str, thinking_m
     yield json.dumps({"status": "generating"})
 
     try:
-        # Store the internal thought for inclusion in the final response
-        internal_thought = None
+        # Store the internal planning for inclusion in the final response
+        internal_monologue = None
         
-        # Generate internal thought only if thinking mode is enabled
-        if thinking_mode:
-            thought_start = time.time()
-            internal_thought = generate_internal_thought(current_model, conversation, token_limits)
-            thought_time = time.time() - thought_start
-            app_logger.info(f"Internal thought generation took {thought_time:.4f} seconds")
+        # Generate internal planning only if planning mode is enabled
+        if planning_mode:
+            planning_start = time.time()
+            internal_monologue = generate_internal_monologue(current_model, conversation, token_limits)
+            planning_time = time.time() - planning_start
+            app_logger.info(f"Internal planning generation took {planning_time:.4f} seconds")
             
-            # Show the internal thought as a separate message
-            thinking_message = internal_thought
+            # Show the internal planning as a separate message
+            planning_message = internal_monologue
             yield json.dumps({
-                "status": "thinking",
-                "thinking": thinking_message,
+                "status": "planning",
+                "planning": planning_message,
                 "timestamp": datetime.now().isoformat()
             })
         else:
-            # Use placeholder internal thought when thinking mode is disabled
-            internal_thought = "Thinking mode is disabled. Proceeding directly to response."
-            app_logger.info("Thinking mode disabled, skipping internal thought generation")
+            # Use placeholder internal planning when planning mode is disabled
+            internal_monologue = "planning mode is disabled. Proceeding directly to response."
+            app_logger.info("planning mode disabled, skipping planning generation")
         
         # Generate AI response
         response_start = time.time()
-        ai_response = generate_final_response(current_model, conversation, internal_thought, token_limits)
+        ai_response = generate_final_response(current_model, conversation, internal_monologue, token_limits)
         response_time = time.time() - response_start
         app_logger.info(f"Final response generation took {response_time:.4f} seconds")
 
         # Add the new message to the conversation
         save_start = time.time()
-        # Only save the internal thought in the node if thinking mode was enabled
-        saved_thought = internal_thought if thinking_mode else None
-        ai_node = conversation.add_message(ai_response, "AI", current_model_name, saved_thought)
+        # Only save the internal planning in the node if planning mode was enabled
+        saved_internal_monologue = internal_monologue if planning_mode else None
+        ai_node = conversation.add_message(ai_response, "AI", current_model_name, saved_internal_monologue)
         save_conversation(conversation, CONVERSATIONS_DIR)
         save_time = time.time() - save_start
         app_logger.info(f"Saving conversation took {save_time:.4f} seconds")
@@ -239,7 +239,7 @@ def generate_ai_response(conversation: Conversation, model_name: str, thinking_m
             "response": ai_response,
             "node_id": ai_node.id,
             "timestamp": ai_node.timestamp.isoformat(),
-            "thinking": internal_thought if thinking_mode else None
+            "planning": internal_monologue if planning_mode else None
         })
     except ValueError as e:
         app_logger.warning(f"{str(e)}")
@@ -259,8 +259,8 @@ def prepare_gatt_history(conversation: Conversation, token_limits: TokenLimits) 
         if node.sender == "Human":
             return f"<user>{node.content}</user>\n"
         else:
-            internal_thought = f"<AI Internal Thought>{node.internal_monologue}</AI Internal Thought>\n" if node.internal_monologue else ""
-            return f"{internal_thought}<AI Response>{node.content}</AI Response>\n\n"
+            internal_monologue = f"<AI Internal Thought>{node.internal_monologue}</AI Internal Thought>\n" if node.internal_monologue else ""
+            return f"{internal_monologue}<AI Response>{node.content}</AI Response>\n\n"
 
     branch = conversation.get_current_branch()
     
@@ -307,7 +307,7 @@ def prepare_gatt_history(conversation: Conversation, token_limits: TokenLimits) 
     return final_history
 
 # Prepare full prompt including system prompts and conversation history
-def prepare_full_prompt(history: str, token_limits: TokenLimits, internal_thought: str = "") -> str:
+def prepare_full_prompt(history: str, token_limits: TokenLimits, internal_monologue: str = "") -> str:
     full_prompt = f"{SYSTEM_PROMPT}\n\n"
     
     if current_session_prompt:
@@ -315,8 +315,8 @@ def prepare_full_prompt(history: str, token_limits: TokenLimits, internal_though
     
     full_prompt += f"{history}\n\n"
     
-    if internal_thought:
-        full_prompt += f"<AI Internal Thought>{internal_thought}</AI Internal Thought>\n\n"
+    if internal_monologue:
+        full_prompt += f"<AI Internal Thought>{internal_monologue}</AI Internal Thought>\n\n"
 
     # Final check against max_tokens
     final_tokens = count_tokens(full_prompt)
@@ -327,25 +327,25 @@ def prepare_full_prompt(history: str, token_limits: TokenLimits, internal_though
 
     return full_prompt
 
-# Generate internal thought for AI response
-def generate_internal_thought(model, conversation, token_limits: TokenLimits):
+# Generate internal planning for AI response
+def generate_internal_monologue(model, conversation, token_limits: TokenLimits):
     history_start = time.time()
     history = prepare_gatt_history(conversation, token_limits)
-    prompt = prepare_full_prompt(history, token_limits=token_limits) + f"\n\n{INTERNAL_THOUGHT_PROMPT}\n<AI Internal Thought>"
-    app_logger.info(f"Internal thought prompt preparation took {time.time() - history_start:.4f} seconds")
+    prompt = prepare_full_prompt(history, token_limits=token_limits) + f"\n\n{internal_monologue_PROMPT}\n<AI Internal Thought>"
+    app_logger.info(f"Internal Planning prompt preparation took {time.time() - history_start:.4f} seconds")
     
     inference_start = time.time()
     response = model(prompt, max_tokens=500, stop=STOP_PHRASES)
     stripped_response = response['choices'][0]['text'].strip()
     app_logger.info(f"<AI Internal Thought>\n{stripped_response}\n</AI Internal Thought>")
-    app_logger.info(f"Internal thought inference took {time.time() - inference_start:.4f} seconds")
+    app_logger.info(f"Internal Planning inference took {time.time() - inference_start:.4f} seconds")
     return stripped_response
 
 # Generate final AI response
-def generate_final_response(model, conversation, internal_thought: str, token_limits: TokenLimits):
+def generate_final_response(model, conversation, internal_monologue: str, token_limits: TokenLimits):
     history_start = time.time()
     history = prepare_gatt_history(conversation, token_limits)
-    prompt = prepare_full_prompt(history, token_limits, internal_thought) + "<AI Response>"
+    prompt = prepare_full_prompt(history, token_limits, internal_monologue) + "<AI Response>"
     app_logger.info(f"Final response prompt preparation took {time.time() - history_start:.4f} seconds")
     
     inference_start = time.time()
@@ -712,7 +712,7 @@ def get_ai_response():
     data = request.json
     conversation_id = data['conversation_id']
     model_name = data['model']
-    thinking_mode = data.get('thinking_mode', False)
+    planning_mode = data.get('planning_mode', False)
     
     # Validate model selection
     is_valid, error_response = validate_model_selection(model_name, "AI response generation")
@@ -722,7 +722,7 @@ def get_ai_response():
     if current_conversation.id != conversation_id:
         current_conversation = load_conversation(conversation_id, CONVERSATIONS_DIR)
     
-    return Response(generate_ai_response(current_conversation, model_name, thinking_mode), mimetype='application/json')
+    return Response(generate_ai_response(current_conversation, model_name, planning_mode), mimetype='application/json')
 
 # Regenerate AI response for a specific message
 @app.route('/message/regenerate', methods=['POST'])
@@ -730,7 +730,7 @@ def regenerate_response():
     data = request.json
     node_id = data['node_id']
     model_name = data['model']
-    thinking_mode = data.get('thinking_mode', False)
+    planning_mode = data.get('planning_mode', False)
     
     # Validate model selection
     is_valid, error_response = validate_model_selection(model_name, "response regeneration")
@@ -741,7 +741,7 @@ def regenerate_response():
         node_to_regenerate = current_conversation.find_node(node_id)
         if node_to_regenerate and node_to_regenerate.parent:
             current_conversation.tree.current_node = node_to_regenerate.parent
-            return Response(generate_ai_response(current_conversation, model_name, thinking_mode), mimetype='application/json')
+            return Response(generate_ai_response(current_conversation, model_name, planning_mode), mimetype='application/json')
     
     return jsonify({'success': False, 'error': 'Failed to regenerate response'}), 400
 

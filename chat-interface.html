@@ -994,7 +994,7 @@
         align-items: flex-end;
       }
 
-      .thinking-toggle {
+      .Planning-toggle {
         background-color: var(--conversation-bg);
         border-radius: 25px;
         width: 50px;
@@ -1010,12 +1010,12 @@
         transition: color 0.3s ease;
       }
 
-      .thinking-toggle:hover {
+      .Planning-toggle:hover {
         color: var(--text-color);
         background-color: var(--conversation-hover-color);
       }
 
-      .thinking-toggle.active {
+      .Planning-toggle.active {
         background-color: var(--secondary-color-light);
         color: var(--text-color-dark);
         /* color: var(--secondary-color-light); */
@@ -1376,9 +1376,9 @@
               ></textarea>
               <div class="input-buttons-container">
                 <button
-                  id="thinking-toggle"
-                  class="thinking-toggle"
-                  title="Toggle AI thinking mode"
+                  id="Planning-toggle"
+                  class="Planning-toggle"
+                  title="Toggle AI planning mode"
                 >
                   💡︎
                 </button>
@@ -1499,7 +1499,7 @@
           const thoughtHeader = document.createElement("div");
           thoughtHeader.classList.add("ai-thought-header");
           thoughtHeader.innerHTML =
-            '💡︎ <span>AI Thoughts</span> <span class="thought-toggle-icon">' +
+            '💡︎ <span>AI Planning</span> <span class="thought-toggle-icon">' +
             (isExpanded ? "▲" : "▼") +
             "</span>";
 
@@ -2005,7 +2005,7 @@
             body: JSON.stringify({
               node_id: nodeId,
               model: currentModel,
-              thinking_mode: thinkingModeEnabled,
+              planning_mode: planningModeEnabled,
             }),
           });
 
@@ -2026,18 +2026,18 @@
             } else if (data.status === "generating") {
               removeLoadingMessage();
               showTypingIndicator();
-            } else if (data.status === "thinking") {
+            } else if (data.status === "planning") {
               removeLoadingMessage();
               removeTypingIndicator();
 
               // Create a temporary thought message ID
-              displayedThoughtId = "thinking-" + Date.now().toString();
+              displayedThoughtId = "planning-" + Date.now().toString();
 
               // Add the thought as an AI thought message
               const thoughtElement = createMessageElement(
                 {
                   id: displayedThoughtId,
-                  content: data.thinking,
+                  content: data.planning,
                   sender: "AI",
                   timestamp: data.timestamp,
                   model_name: currentModel,
@@ -2071,7 +2071,7 @@
                 sender: "AI",
                 timestamp: data.timestamp,
                 model_name: currentModel,
-                internal_monologue: thinkingModeEnabled ? data.thinking : null,
+                internal_monologue: planningModeEnabled ? data.planning : null,
               });
             } else if (data.status === "error") {
               throw new Error(data.message);
@@ -2176,7 +2176,7 @@
                 message: message,
                 model: currentModel,
                 session_prompt: currentSessionPrompt,
-                thinking_mode: thinkingModeEnabled,
+                planning_mode: planningModeEnabled,
               }),
             });
 
@@ -2214,7 +2214,7 @@
               body: JSON.stringify({
                 conversation_id: humanData.conversation_id,
                 model: currentModel,
-                thinking_mode: thinkingModeEnabled,
+                planning_mode: planningModeEnabled,
               }),
             });
 
@@ -2239,7 +2239,7 @@
                   startFirstMessageTimer();
                   isFirstMessage = false;
                 }
-              } else if (aiData.status === "thinking") {
+              } else if (aiData.status === "planning") {
                 removeLoadingMessage();
                 removeTypingIndicator();
 
@@ -2254,13 +2254,13 @@
                 }
 
                 // Create a temporary thought message ID
-                displayedThoughtId = "thinking-" + Date.now().toString();
+                displayedThoughtId = "planning-" + Date.now().toString();
 
                 // Add the thought as an AI thought message instead of a system message
                 const thoughtElement = createMessageElement(
                   {
                     id: displayedThoughtId,
-                    content: aiData.thinking,
+                    content: aiData.planning,
                     sender: "AI",
                     timestamp: aiData.timestamp,
                     model_name: currentModel,
@@ -2295,8 +2295,8 @@
                   sender: "AI",
                   timestamp: aiData.timestamp,
                   model_name: currentModel,
-                  internal_monologue: thinkingModeEnabled
-                    ? aiData.thinking
+                  internal_monologue: planningModeEnabled
+                    ? aiData.planning
                     : null,
                 });
               } else if (aiData.status === "error") {
@@ -2957,32 +2957,32 @@
       loadModelsFolderPath();
       loadCurrentConversation();
 
-      let thinkingModeEnabled =
-        localStorage.getItem("thinkingModeEnabled") === "true";
+      let planningModeEnabled =
+        localStorage.getItem("planningModeEnabled") === "true";
 
       // Initialize UI state based on saved preferences
-      function initializeThinkingToggle() {
-        const thinkingToggle = document.getElementById("thinking-toggle");
-        if (thinkingModeEnabled) {
-          thinkingToggle.classList.add("active");
+      function initializePlanningToggle() {
+        const planningToggle = document.getElementById("Planning-toggle");
+        if (planningModeEnabled) {
+          planningToggle.classList.add("active");
         } else {
-          thinkingToggle.classList.remove("active");
+          planningToggle.classList.remove("active");
         }
       }
 
-      // Handle thinking toggle button click
+      // Handle planning toggle button click
       document
-        .getElementById("thinking-toggle")
+        .getElementById("Planning-toggle")
         .addEventListener("click", function () {
-          thinkingModeEnabled = !thinkingModeEnabled;
-          localStorage.setItem("thinkingModeEnabled", thinkingModeEnabled);
+          planningModeEnabled = !planningModeEnabled;
+          localStorage.setItem("planningModeEnabled", planningModeEnabled);
 
-          if (thinkingModeEnabled) {
+          if (planningModeEnabled) {
             this.classList.add("active");
             addMessage({
               id: Date.now().toString(),
               content:
-                "AI thinking mode enabled. You'll see the AI's internal thought process before responses.",
+                "AI planning mode enabled. You'll see the AI's internal thought process before responses.",
               sender: "System",
               timestamp: null,
             });
@@ -2991,7 +2991,7 @@
             addMessage({
               id: Date.now().toString(),
               content:
-                "AI thinking mode disabled. The AI will respond directly without showing its thought process.",
+                "AI planning mode disabled. The AI will respond directly without showing its thought process.",
               sender: "System",
               timestamp: null,
             });
@@ -2999,7 +2999,7 @@
         });
 
       // Initialize UI state
-      initializeThinkingToggle();
+      initializePlanningToggle();
     </script>
   </body>
 </html>

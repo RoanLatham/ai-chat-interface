@@ -41,7 +41,7 @@ class Tree:
     def edit_node(self, node_id: str, new_content: str) -> Optional[Node]:
         node = self.find_node(node_id)
         if node and node != self.root:
-            # Don't preserve internal_monologue when editing (set to None)
+            # Don't preserve planning when editing (set to None)
             new_node = Node(new_content, node.sender, datetime.now(), node.model_name, None)
             new_node.parent = node.parent
             node.parent.children.append(new_node)
