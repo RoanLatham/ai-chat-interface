@@ -1,4 +1,4 @@
-local-ai-chat-env/
+venv/
 ai_models/
 conversations/
 __pycache__/
