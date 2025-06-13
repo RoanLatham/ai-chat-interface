@@ -134,13 +134,16 @@
         color: var(--primary-color);
       }
 
-      #model-controls-container {
+      #controls-container {
         display: flex;
         flex-direction: row;
+        justify-content: center;
         align-items: center;
-        justify-content: space-between;
         margin-bottom: 20px;
-        gap: 10px;
+        gap: 30px;
+        background-color: var(--chat-bg);
+        border-radius: 10px;
+        padding: 10px;
       }
 
       #model-select {
@@ -701,9 +704,16 @@
 
       #app-container {
         display: flex;
+        flex-direction: column;
         width: 100%;
         max-width: var(--max-width);
-        height: 70vh;
+      }
+
+      .flex-horizontal {
+        display: flex;
+        flex-direction: row;
+        height: 100%;
+        width: 100%;
       }
 
       #conversation-list {
@@ -1177,16 +1187,6 @@
   <body>
     <header>
       <h1>AI Chat Interface</h1>
-      <div id="model-controls-container">
-        <button id="add-model-button" class="button">
-          <span>Add Model</span>
-        </button>
-        <select id="model-select"></select>
-        <button id="session-prompt-button" class="button">
-          <span>Edit Session Prompt</span>
-        </button>
-        <button id="help-button" class="button">Help</button>
-      </div>
 
       <div id="session-prompt-modal" class="modal">
         <div class="modal-content">
@@ -1237,6 +1237,18 @@
     </header>
 
     <div id="app-container">
+      <div id="controls-container">
+        <button id="add-model-button" class="button">
+          <span>Add Model</span>
+        </button>
+        <select id="model-select"></select>
+        <button id="session-prompt-button" class="button">
+          <span>Edit Session Prompt</span>
+        </button>
+        <button id="help-button" class="button">Help</button>
+      </div>
+
+      <div class="flex-horizontal">
       <div id="conversation-list">
         <button id="new-chat-button" class="new-chat-button">
           <svg
@@ -1392,6 +1404,7 @@
             </svg>
           </button> -->
         </footer>
+        </div>
       </div>
     </div>
 
