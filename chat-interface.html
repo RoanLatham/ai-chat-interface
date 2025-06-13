@@ -105,6 +105,7 @@
         align-items: center;
         min-height: 100vh;
         padding: 20px;
+        margin-top: 3vh;
       }
 
       main,
@@ -714,6 +715,7 @@
         flex-direction: column;
         width: 100%;
         max-width: var(--max-width);
+        height: 75vh;
       }
 
       .flex-horizontal {
@@ -1256,161 +1258,161 @@
       </div>
 
       <div class="flex-horizontal">
-      <div id="conversation-list">
-        <button id="new-chat-button" class="new-chat-button">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-          >
-            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
-          </svg>
-          New chat
-        </button>
-      </div>
-      <div id="chat-area">
-        <main id="chat-container"></main>
-        <div id="no-models-guide" class="guide-container">
-          <div>
-            <h2>Welcome to the AI Chat Interface!</h2>
-            <section
-              class="guide-section"
-              id="no-models-message"
-              style="margin-bottom: 30px"
+        <div id="conversation-list">
+          <button id="new-chat-button" class="new-chat-button">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
             >
-              <h3 style="margin-bottom: 0">
+              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+            </svg>
+            New chat
+          </button>
+        </div>
+        <div id="chat-area">
+          <main id="chat-container"></main>
+          <div id="no-models-guide" class="guide-container">
+            <div>
+              <h2>Welcome to the AI Chat Interface!</h2>
+              <section
+                class="guide-section"
+                id="no-models-message"
+                style="margin-bottom: 30px"
+              >
+                <h3 style="margin-bottom: 0">
                 It looks like you don't have any AI models installed yet. Let's
                 get you started!
-              </h3>
-            </section>
-            <section class="guide-section">
-              <h3>Step 1: Download Llama Models</h3>
-              <p>
-                Visit
-                <a
-                  href="https://huggingface.co/models?search=llama"
-                  target="_blank"
-                  ><strong>Hugging Face</strong></a
-                >
-                to download Llama models.
-              </p>
-              <p>
-                Look for files ending with <strong>.gguf</strong> - these are
-                the ones we can use!
-              </p>
-            </section>
+                </h3>
+              </section>
+              <section class="guide-section">
+                <h3>Step 1: Download Llama Models</h3>
+                <p>
+                  Visit
+                  <a
+                    href="https://huggingface.co/models?search=llama"
+                    target="_blank"
+                    ><strong>Hugging Face</strong></a
+                  >
+                  to download Llama models.
+                </p>
+                <p>
+                  Look for files ending with <strong>.gguf</strong> - these are
+                  the ones we can use!
+                </p>
+              </section>
 
-            <section class="guide-section" style="margin-bottom: 30px">
-              <h3>Step 2: Place Models in the Correct Folder</h3>
-              <p>
+              <section class="guide-section" style="margin-bottom: 30px">
+                <h3>Step 2: Place Models in the Correct Folder</h3>
+                <p>
                 Once downloaded, place the model files in your designated models
                 folder.
-              </p>
-              <p>
-                Your models folder is located at:
-                <span class="models-folder-path"></span>
-              </p>
-              <button class="button guide-button open-folder-button">
-                Open Models Folder
-              </button>
-            </section>
+                </p>
+                <p>
+                  Your models folder is located at:
+                  <span class="models-folder-path"></span>
+                </p>
+                <button class="button guide-button open-folder-button">
+                  Open Models Folder
+                </button>
+              </section>
 
-            <section class="guide-section">
-              <h3>Understanding Model Names</h3>
-              <p>Llama model names can be confusing. Here's a quick guide:</p>
-              <ul>
-                <li>
+              <section class="guide-section">
+                <h3>Understanding Model Names</h3>
+                <p>Llama model names can be confusing. Here's a quick guide:</p>
+                <ul>
+                  <li>
                   <strong>Q Levels:</strong> (e.g., Q4_K_M vs Q5_K_M) - Higher Q
                   numbers mean better quality but slower performance.
-                </li>
-                <li>
+                  </li>
+                  <li>
                   <strong>Parameter Count:</strong> ('M' million, 'B' billion) -
                   higher parameter count results in a more knowledgeable but
-                  slower model.
-                </li>
-              </ul>
-            </section>
+                    slower model.
+                  </li>
+                </ul>
+              </section>
 
-            <section class="guide-section">
-              <h3>Context Window Sizes</h3>
-              <p>
-                Larger context windows allow the model to remember more of the
-                conversation history and handle more complex tasks.
-              </p>
-              <p>
-                Different Llama versions have different context window sizes:
-              </p>
-              <ul>
-                <li><strong>Llama 2:</strong> 4,096 tokens</li>
-                <li><strong>Llama 3:</strong> 8,192 tokens</li>
-                <li><strong>Llama 3.1:</strong> 128,000 tokens</li>
-              </ul>
-            </section>
+              <section class="guide-section">
+                <h3>Context Window Sizes</h3>
+                <p>
+                  Larger context windows allow the model to remember more of the
+                  conversation history and handle more complex tasks.
+                </p>
+                <p>
+                  Different Llama versions have different context window sizes:
+                </p>
+                <ul>
+                  <li><strong>Llama 2:</strong> 4,096 tokens</li>
+                  <li><strong>Llama 3:</strong> 8,192 tokens</li>
+                  <li><strong>Llama 3.1:</strong> 128,000 tokens</li>
+                </ul>
+              </section>
 
-            <section class="guide-section">
-              <h3>Ready to Chat?</h3>
-              <p>
+              <section class="guide-section">
+                <h3>Ready to Chat?</h3>
+                <p>
                 Once you've added a model, refresh this page to start chatting!
-              </p>
-            </section>
-            <button
-              id="close-guide-button"
-              class="button guide-button"
-              style="display: none"
-            >
-              Close Guide
-            </button>
-          </div>
-        </div>
-        <footer id="input-container">
-          <div id="message-box">
-            <textarea
-              id="user-input"
-              placeholder="Type your message... (shift+enter for a new line)"
-              rows="1"
-            ></textarea>
-            <div class="input-buttons-container">
+                </p>
+              </section>
               <button
-                id="thinking-toggle"
-                class="thinking-toggle"
-                title="Toggle AI thinking mode"
+                id="close-guide-button"
+                class="button guide-button"
+                style="display: none"
               >
-                💡︎
+                Close Guide
               </button>
             </div>
           </div>
-          <button id="send-button" class="button send-button">
-            Send
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              width="18"
-              height="18"
-              style="margin-left: 5px"
-            >
-              <path
-                d="M3.4 20.4l17.45-7.48c.81-.35.81-1.49 0-1.84L3.4 3.6c-.66-.29-1.39.2-1.39.91L2 9.12c0 .5.37.93.87.99L17 12 2.87 13.88c-.5.07-.87.5-.87 1l.01 4.61c0 .71.73 1.2 1.39.91z"
-              />
-            </svg>
-          </button>
-          <!-- <button id="send-button" class="button send-button">
-            Send
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              width="18"
-              height="18"
-              style="margin-left: 5px"
-            >
-              <path
-                d="M1.946 9.315c-.522-.174-.527-.455.01-.634l19.087-6.362c.529-.176.832.12.684.638l-5.454 19.086c-.15.529-.455.547-.679.045L12 14l6-8-8 6-8.054-2.685z"
-              />
-            </svg>
-          </button> -->
-        </footer>
+          <footer id="input-container">
+            <div id="message-box">
+              <textarea
+                id="user-input"
+                placeholder="Type your message... (shift+enter for a new line)"
+                rows="1"
+              ></textarea>
+              <div class="input-buttons-container">
+                <button
+                  id="thinking-toggle"
+                  class="thinking-toggle"
+                  title="Toggle AI thinking mode"
+                >
+                  💡︎
+                </button>
+              </div>
+            </div>
+            <button id="send-button" class="button send-button">
+              Send
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                width="18"
+                height="18"
+                style="margin-left: 5px"
+              >
+                <path
+                  d="M3.4 20.4l17.45-7.48c.81-.35.81-1.49 0-1.84L3.4 3.6c-.66-.29-1.39.2-1.39.91L2 9.12c0 .5.37.93.87.99L17 12 2.87 13.88c-.5.07-.87.5-.87 1l.01 4.61c0 .71.73 1.2 1.39.91z"
+                />
+              </svg>
+            </button>
+            <!-- <button id="send-button" class="button send-button">
+              Send
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                width="18"
+                height="18"
+                style="margin-left: 5px"
+              >
+                <path
+                  d="M1.946 9.315c-.522-.174-.527-.455.01-.634l19.087-6.362c.529-.176.832.12.684.638l-5.454 19.086c-.15.529-.455.547-.679.045L12 14l6-8-8 6-8.054-2.685z"
+                />
+              </svg>
+            </button> -->
+          </footer>
         </div>
       </div>
     </div>
