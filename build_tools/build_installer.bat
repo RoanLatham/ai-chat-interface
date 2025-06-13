@@ -40,7 +40,6 @@ REM Inno Setup can return exit code 1 for warnings, but the installer still buil
 IF %ERRORLEVEL% NEQ 0 (
     IF EXIST "%BuildRootDir%\Output\LocalAIChat_Setup.exe" (
         echo Warning: Inno Setup reported warnings but the installer was built successfully.
-        exit /b 0
     ) ELSE (
         echo Installer build failed with error code %ERRORLEVEL%!
         exit /b %ERRORLEVEL%
@@ -49,4 +48,15 @@ IF %ERRORLEVEL% NEQ 0 (
     echo Installer built successfully!
 )
 
-exit /b 0 
+REM Create zip file of the LocalAIChat folder
+echo Creating zip file of LocalAIChat folder...
+powershell -command "& {Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.ZipFile]::CreateFromDirectory('%BuildRootDir%\dist\LocalAIChat', '%BuildRootDir%\Output\LocalAIChat_Portable.zip');}"
+
+IF %ERRORLEVEL% NEQ 0 (
+    echo Failed to create zip file!
+    exit /b %ERRORLEVEL%
+) ELSE (
+    echo Zip file created successfully at: %BuildRootDir%\Output\LocalAIChat.zip
+)
+
+exit /b 0
