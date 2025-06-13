@@ -37,7 +37,6 @@
         --accent-color: #fd79a8;
         --accent-hover-color: #e74c3c;
         --chat-bg: #2d3436;
-        --chat-bg-hover: #272e30;
         --button-color: #4d5b5f;
         --button-hover-color: #424d50;
         /* --button-hover-color: #364a4f; */
@@ -151,14 +150,21 @@
         padding: 10px;
         border-radius: 5px;
         border: none;
-        background-color: var(--chat-bg);
+        background-color: var(--button-color);
         color: var(--text-color);
         font-size: 1rem;
         transition: background-color 0.3s ease;
+        transition: transform 0.3s ease;
       }
 
       #model-select:hover {
-        background-color: var(--chat-bg-hover);
+        background-color: var(--button-hover-color);
+        transform: scale(1.02);
+      }
+
+      #model-select:active {
+        transition: transform 0.1s ease-in-out;
+        transform: scale(0.95);
       }
 
       #chat-container {
@@ -617,12 +623,12 @@
         font-size: 1rem;
         cursor: pointer;
         transition: background-color 0.3s ease;
-        transition: transform 0.3s ease-in-out;
+        transition: transform 0.3s ease;
       }
 
       .button:hover {
         background-color: var(--button-hover-color);
-        /* transform: scale(1.02); */
+        transform: scale(1.02);
       }
 
       button:active {
@@ -646,6 +652,7 @@
 
       #send-button:hover {
         background-color: var(--primary-hover-color);
+        transform: scale(1);
       }
 
       @media (max-width: 600px) {
