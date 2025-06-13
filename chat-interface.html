@@ -1589,9 +1589,11 @@
 
         if (message.sender != "System") {
           if (message.sender === "AI") {
+            infoElement.appendChild(createSeparator());
             infoElement.appendChild(createModelNameElement(message.model_name));
           }
 
+          infoElement.appendChild(createSeparator());
           const iconContainer = document.createElement("div");
           iconContainer.classList.add("message-icon-container");
 
@@ -1610,10 +1612,19 @@
         return messageContainer;
       }
 
+      function createSeparator() {
+        const separator = document.createElement("span");
+        separator.classList.add("message-separator");
+        separator.textContent = "\u00A0| ";
+        return separator;
+      }
+
       function createTimestampElement(timestamp) {
         const timestampElement = document.createElement("span");
         timestampElement.classList.add("timestamp");
-        timestampElement.textContent = new Date(timestamp).toLocaleString();
+        timestampElement.textContent = new Date(timestamp)
+          .toLocaleString()
+          .replace(",", " |");
         return timestampElement;
       }
 
@@ -1627,7 +1638,7 @@
         if (modelName) {
           const modelElement = document.createElement("span");
           modelElement.classList.add("model-name");
-          modelElement.textContent = `• Model: ${modelName}`;
+          modelElement.textContent = `Model: ${modelName}`;
           fragment.appendChild(modelElement);
         }
 
