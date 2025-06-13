@@ -44,6 +44,7 @@ def clean_build_directories():
     print("Cleaning build directories...")
     root_dir = get_root_dir()
     dirs_to_clean = [
+        os.path.join(root_dir, 'Output'), 
         os.path.join(root_dir, 'build'), 
         os.path.join(root_dir, 'dist'), 
         os.path.join(root_dir, 'Local_AI_Chat.spec')
