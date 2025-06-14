@@ -41,8 +41,22 @@ def ensure_dependencies():
 
 def clean_build_directories():
     """Clean build and dist directories"""
-    print("Cleaning build directories...")
+    print("Checking for AI model files in output directory...")
     root_dir = get_root_dir()
+    output_dir = os.path.join(root_dir, 'Output', 'LocalAIChat_Portable', 'ai_models')
+    
+    if os.path.exists(output_dir):
+        # Get all files in ai_models directory
+        files = os.listdir(output_dir)
+        # Filter out the placeholder file
+        model_files = [f for f in files if f != "Place AI model gguf files here"]
+        
+        if model_files:
+            error_msg = "AI model files detected in output directory. Have you left AI models in the output dir?\n"
+            error_msg += "Files found:\n" + "\n".join(f"- {f}" for f in model_files)
+            raise RuntimeError(error_msg)
+    
+    print("Cleaning build directories...")
     dirs_to_clean = [
         os.path.join(root_dir, 'Output'), 
         os.path.join(root_dir, 'build'), 
