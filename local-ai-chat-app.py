@@ -384,20 +384,25 @@ def load_model(model_name):
         
         app_logger.info(f"Loading model: {selected_model_path}")
         
-        # Configure model parameters
-        model_params = {
-            "model_path": selected_model_path,
-            "n_ctx": 4096,
-            "n_threads": 8,
-            "seed": 42,
-            "f16_kv": True,
-            "use_mlock": True
-        }
-        
-        # Load the model with the appropriate configuration
-        current_model = Llama(**model_params)
-        current_model_name = model_name
-        load_model.model_cache[model_name] = current_model
+        try:
+            # Configure model parameters
+            model_params = {
+                "model_path": selected_model_path,
+                "n_ctx": 4096,
+                "n_threads": 8,
+                "seed": 42,
+                "f16_kv": True,
+                "use_mlock": True
+            }
+            
+            # Load the model with the appropriate configuration
+            current_model = Llama(**model_params)
+            current_model_name = model_name
+            load_model.model_cache[model_name] = current_model
+        except Exception as e:
+            app_logger.error(f"Failed to load model {model_name}: {str(e)}")
+            raise RuntimeError(f"Failed to load model: {str(e)}")
+            
     return current_model
 
 # Get list of available AI models
@@ -674,9 +679,18 @@ def add_user_message():
         if current_model is None or current_model_name != model_name:
             yield json.dumps({"status": "loading_model"})
             model_load_start = time.time()
-            current_model = load_model(model_name)
-            current_model_name = model_name
-            app_logger.info(f"Model loading took {time.time() - model_load_start:.4f} seconds")
+            try:
+                current_model = load_model(model_name)
+                current_model_name = model_name
+                app_logger.info(f"Model loading took {time.time() - model_load_start:.4f} seconds")
+            except (ValueError, RuntimeError) as e:
+                error_message = str(e)
+                app_logger.error(f"Model loading failed: {error_message}")
+                yield json.dumps({
+                    'status': 'error',
+                    'message': error_message
+                })
+                return
         
         if current_conversation is None:
             yield json.dumps({"status": "creating_conversation"})

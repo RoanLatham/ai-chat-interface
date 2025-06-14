@@ -2214,6 +2214,8 @@
                 isFirstMessage = true;
               } else if (humanData.status === "loading_model") {
                 showLoadingMessage("Loading AI model...");
+              } else if (humanData.status === "error") {
+                throw new Error(humanData.message || "Failed to load AI model");
               } else if (humanData.status === "complete") {
                 removeLoadingMessage();
                 addMessage({
@@ -2227,99 +2229,101 @@
               }
             }
 
-            const aiResponse = await fetch("/conversation/get_ai_response", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                conversation_id: humanData.conversation_id,
-                model: currentModel,
-                planning_mode: planningModeEnabled,
-              }),
-            });
+            if (humanData.status === "complete") {
+              const aiResponse = await fetch("/conversation/get_ai_response", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  conversation_id: humanData.conversation_id,
+                  model: currentModel,
+                  planning_mode: planningModeEnabled,
+                }),
+              });
 
-            const aireader = aiResponse.body.getReader();
-            const aidecoder = new TextDecoder();
+              const aireader = aiResponse.body.getReader();
+              const aidecoder = new TextDecoder();
 
-            // Track if we've displayed a thought message that we might need to remove
-            let displayedThoughtId = null;
+              // Track if we've displayed a thought message that we might need to remove
+              let displayedThoughtId = null;
 
-            while (true) {
-              const { done, value } = await aireader.read();
-              if (done) break;
-              const chunk = aidecoder.decode(value);
-              const aiData = JSON.parse(chunk);
+              while (true) {
+                const { done, value } = await aireader.read();
+                if (done) break;
+                const chunk = aidecoder.decode(value);
+                const aiData = JSON.parse(chunk);
 
-              if (aiData.status === "loading_model") {
-                showLoadingMessage("Loading AI model...");
-              } else if (aiData.status === "generating") {
-                removeLoadingMessage();
-                showTypingIndicator();
-                if (isFirstMessage) {
-                  startFirstMessageTimer();
-                  isFirstMessage = false;
-                }
-              } else if (aiData.status === "planning") {
-                removeLoadingMessage();
-                removeTypingIndicator();
-
-                // Remove previous thought message if it exists
-                if (displayedThoughtId) {
-                  const previousThought = document.querySelector(
-                    `[data-node-id="${displayedThoughtId}"]`
-                  );
-                  if (previousThought) {
-                    previousThought.remove();
+                if (aiData.status === "loading_model") {
+                  showLoadingMessage("Loading AI model...");
+                } else if (aiData.status === "generating") {
+                  removeLoadingMessage();
+                  showTypingIndicator();
+                  if (isFirstMessage) {
+                    startFirstMessageTimer();
+                    isFirstMessage = false;
                   }
-                }
+                } else if (aiData.status === "planning") {
+                  removeLoadingMessage();
+                  removeTypingIndicator();
 
-                // Create a temporary thought message ID
-                displayedThoughtId = "planning-" + Date.now().toString();
+                  // Remove previous thought message if it exists
+                  if (displayedThoughtId) {
+                    const previousThought = document.querySelector(
+                      `[data-node-id="${displayedThoughtId}"]`
+                    );
+                    if (previousThought) {
+                      previousThought.remove();
+                    }
+                  }
 
-                // Add the thought as an AI thought message instead of a system message
-                const thoughtElement = createMessageElement(
-                  {
-                    id: displayedThoughtId,
-                    content: aiData.planning,
+                  // Create a temporary thought message ID
+                  displayedThoughtId = "planning-" + Date.now().toString();
+
+                  // Add the thought as an AI thought message instead of a system message
+                  const thoughtElement = createMessageElement(
+                    {
+                      id: displayedThoughtId,
+                      content: aiData.planning,
+                      sender: "AI",
+                      timestamp: aiData.timestamp,
+                      model_name: currentModel,
+                    },
+                    true, // Is thought message
+                    true // Is expanded
+                  );
+
+                  chatContainer.appendChild(thoughtElement);
+                  chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                  showTypingIndicator();
+                } else if (aiData.status === "complete") {
+                  clearFirstMessageTimer();
+                  removeTypingIndicator();
+                  removeLoadingMessage();
+
+                  // Remove the temporary thought display since it will be re-added by addMessage
+                  if (displayedThoughtId) {
+                    const previousThought = document.querySelector(
+                      `[data-node-id="${displayedThoughtId}"]`
+                    );
+                    if (previousThought) {
+                      previousThought.remove();
+                    }
+                  }
+
+                  // Add the complete AI message with internal_monologue included
+                  addMessage({
+                    id: aiData.node_id,
+                    content: aiData.response,
                     sender: "AI",
                     timestamp: aiData.timestamp,
                     model_name: currentModel,
-                  },
-                  true, // Is thought message
-                  true // Is expanded
-                );
-
-                chatContainer.appendChild(thoughtElement);
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-
-                showTypingIndicator();
-              } else if (aiData.status === "complete") {
-                clearFirstMessageTimer();
-                removeTypingIndicator();
-                removeLoadingMessage();
-
-                // Remove the temporary thought display since it will be re-added by addMessage
-                if (displayedThoughtId) {
-                  const previousThought = document.querySelector(
-                    `[data-node-id="${displayedThoughtId}"]`
-                  );
-                  if (previousThought) {
-                    previousThought.remove();
-                  }
+                    internal_monologue: planningModeEnabled
+                      ? aiData.planning
+                      : null,
+                  });
+                } else if (aiData.status === "error") {
+                  throw new Error(aiData.message);
                 }
-
-                // Add the complete AI message with internal_monologue included
-                addMessage({
-                  id: aiData.node_id,
-                  content: aiData.response,
-                  sender: "AI",
-                  timestamp: aiData.timestamp,
-                  model_name: currentModel,
-                  internal_monologue: planningModeEnabled
-                    ? aiData.planning
-                    : null,
-                });
-              } else if (aiData.status === "error") {
-                throw new Error(aiData.message);
               }
             }
           } catch (error) {
