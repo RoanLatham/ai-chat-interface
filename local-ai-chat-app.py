@@ -1,3 +1,5 @@
+import importlib
+from llama_cpp import Llama
 import os
 from datetime import datetime
 import logging
@@ -7,7 +9,6 @@ import sys
 import platform
 from typing import List
 from flask import Flask, Response, request, jsonify, send_from_directory
-from llama_cpp import Llama
 from conversation import Conversation, create_conversation, save_conversation, load_conversation, load_all_conversations, Node, CONVERSATION_VERSION
 import json
 import time
@@ -879,6 +880,31 @@ if __name__ == '__main__':
     app_logger.info(f"User data directory: {USER_DATA_DIR}")
     app_logger.info(f"Models directory: {MODELS_DIR}")
     app_logger.info(f"Conversations directory: {CONVERSATIONS_DIR}")
+    
+    # Library version and import verification
+    if True:  # Toggle for developers
+        try:
+            import llama_cpp
+            app_logger.info(f"llama_cpp version: {llama_cpp.__version__}")
+            app_logger.info(f"llama_cpp path: {llama_cpp.__file__}")
+            
+            # Verify llama_cpp functionality
+            if not hasattr(llama_cpp, 'Llama'):
+                app_logger.error("llama_cpp.Llama class not found!")
+            else:
+                app_logger.info("llama_cpp.Llama class verified")
+                
+            # Check for other major dependencies
+            import flask
+            app_logger.info(f"Flask version: {importlib.metadata.version('flask')}")
+            
+            import logging
+            app_logger.info(f"Python logging version: {logging.__version__}")
+            
+        except ImportError as e:
+            app_logger.error(f"Failed to import required library: {str(e)}")
+        except Exception as e:
+            app_logger.error(f"Error during library verification: {str(e)}")
     
     # Ensure directories exist
     os.makedirs(MODELS_DIR, exist_ok=True)
