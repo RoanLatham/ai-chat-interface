@@ -714,6 +714,15 @@
         gap: 10px;
       }
 
+      .session-prompt-info {
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: var(--conversation-bg);
+        border-radius: 5px;
+        font-size: 0.9em;
+        color: var(--text-color);
+      }
+
       #app-container {
         display: flex;
         flex-direction: column;
@@ -1207,6 +1216,11 @@
       <div id="session-prompt-modal" class="modal">
         <div class="modal-content">
           <h2>Edit Session Prompt</h2>
+          <div class="session-prompt-info">
+            <strong>Note:</strong> The session prompt remains active as long as
+            the server is running and is shared across all conversations.
+            Changes will apply to all new messages in any conversation.
+          </div>
           <textarea id="session-prompt-input" rows="10" cols="50"></textarea>
           <div class="modal-buttons">
             <button id="load-default-prompt" class="button">
