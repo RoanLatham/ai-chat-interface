@@ -1,6 +1,6 @@
 #define MyAppName "Local AI Chat"
-#define MyAppVersion "1.0.0"
-#define MyAppPublisher "Local AI Chat"
+#define MyAppVersion "1.1.0"
+#define MyAppPublisher "RoanLatham"
 #define MyAppURL "https://github.com/RoanLatham/ai-chat-interface"
 #define MyAppExeName "LocalAIChat.exe"
 #define RootDir GetEnv('BuildRootDir')
