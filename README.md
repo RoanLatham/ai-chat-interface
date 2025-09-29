@@ -261,18 +261,20 @@ ai-chat-interface/
 <details open>
 <summary><h4>🔨 Building the Application</h4></summary>
 
-```bash
+### Windows (using batch files):
+
+```cmd
 # Navigate to the build_tools directory
 cd build_tools
 
 # Run the master build script
-python build_master.bat
+build_master.bat
 
 # Build without creating an installer
-python build_master.bat --no-installer
+build_master.bat --no-installer
 
 # Skip dependency checks
-python build_master.bat --skip-deps
+build_master.bat --skip-deps
 ```
 
 </details>
